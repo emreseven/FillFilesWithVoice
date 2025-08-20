@@ -1,0 +1,34 @@
+# Birleşik Sesli Belge Doldurma Sistemi - Gereksinimler
+# Her iki projenin en iyi özelliklerini birleştiren unified_app.py için
+
+# Temel bağımlılıklar
+streamlit>=1.28.0
+openai>=1.0.0
+python-docx>=0.8.11
+
+# Tarih işleme (app2.py'den)
+dateparser>=1.1.0
+
+# Mikrofon kayıt kütüphaneleri (çoklu destek)
+# Not: Eğer kurulum sorunu yaşarsanız, sadece birini kurup diğerini yorum satırına alabilirsiniz
+streamlit-mic-recorder>=0.1.0  # voice.py'den
+st-audiorec>=0.0.5            # app2.py'den
+
+# Zaman dilimi desteği (Python 3.9+ için)
+# Python 3.8 kullanıyorsanız: pip install backports.zoneinfo
+backports.zoneinfo>=0.2.1; python_version < "3.9"
+
+# Geliştirme ve dağıtım için ek paketler
+watchdog>=3.0.0     # Streamlit dosya izleme
+regex>=2023.0.0     # Gelişmiş regex desteği
+
+# Opsiyonel: Performans iyileştirmeleri
+numpy>=1.21.0       # Hızlı array işlemleri
+pandas>=1.3.0       # Veri manipülasyonu (gelecek özellikler için)
+
+# Güvenlik ve hata ayıklama
+requests>=2.28.0    # HTTP istekleri için
+urllib3>=1.26.0     # Güvenli bağlantılar
+
+# JSON işleme iyileştirmeleri
+orjson>=3.8.0       # Hızlı JSON parsing (opsiyonel)

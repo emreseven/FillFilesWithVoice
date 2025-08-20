@@ -1,0 +1,19 @@
+{
+  "session_id": "sess_048b54c2",
+  "session_name": "123 - Emre Sevin",
+  "extracted_data": {
+    "{ders}": "işletme",
+    "{blok}": "B",
+    "{soyad}": "Sevin",
+    "{ögrencino}": "123",
+    "{ad}": "Emre",
+    "{sınıfno}": "13",
+    "{tcno}": "571",
+    "{gün}": "Perşembe",
+    "{açıklama}": "kopya çekerken yakalandı",
+    "{saat}": ""
+  },
+  "created_date": "2025-08-20T14:38:51.596363",
+  "last_modified": "2025-08-20T14:39:37.246768",
+  "voice_count": 1
+}
