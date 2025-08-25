@@ -350,6 +350,25 @@ def infer_placeholder_values(
         existing_values = {}
 
     # Gelişmiş prompt
+    # İsim ve bölüm alanları için kuralları dinamik üret
+    ph_lower_list = [ph.lower() for ph in placeholders]
+    has_fullname_key = any(("ogrenci" in p and ("adi_soyadi" in p or "ad_soyad" in p)) for p in ph_lower_list)
+    has_name_key = any(("ogrenci" in p and ("ad" in p or "adi" in p or "isim" in p) and "soyad" not in p) for p in ph_lower_list)
+    has_surname_key = any(("ogrenci" in p and ("soyad" in p or "soyadi" in p)) for p in ph_lower_list)
+    has_department_key = any(("bolum" in p) or ("bölüm" in p) for p in ph_lower_list)
+
+    name_rules_lines: List[str] = []
+    if has_fullname_key:
+        name_rules_lines.append("- {ogrenci_adi_soyadi} alanı için öğrencinin tam adını 'Ad Soyad' formatında ver (örn: 'Ecem Nalbantoğlu').")
+    if has_name_key and has_surname_key:
+        name_rules_lines.append("- Ayrı alanlar varsa {ogrenci_ad}/{ogrenci_adi} ve {ogrenci_soyad}/{ogrenci_soyadi} alanlarını ayrı ayrı doldur (örn: 'Ecem' ve 'Nalbantoğlu').")
+    elif has_name_key or has_surname_key:
+        name_rules_lines.append("- Öğrenci adı/soyadı alanları varsa transkriptte geçtiği şekliyle doldur.")
+
+    department_rules_lines: List[str] = []
+    if has_department_key:
+        department_rules_lines.append("- {bolum}/{bolum_adi} gibi bölüm alanlarında tek bir bölüm adı ver. Birden fazla bölüm yazma (örn: 'İşletme' veya 'Bilgisayar Mühendisliği'; 'İşletme Muhasebe' yazma).")
+
     prompt_text = f"""
 SES TRANSKRİPTİ:
 "{transcript}"
@@ -385,6 +404,14 @@ MEVCUT DEĞERLER (DEĞİŞTİRME):
  - {blok} alanı sadece tek büyük harf (A-Z) olmalı (ör: A, B, C). Tahmin etme; transkriptte yoksa boş bırak.
  - {ogrenci_adi_soyadi} alanına öğrencinin tam adı ve soyadı gelmeli (örn: "Emre Yılmaz").
 
+EK ÖZEL KURALLAR:
+"""
+    # Dinamik ek kuralları prompt'a ekle
+    if name_rules_lines or department_rules_lines:
+        extra_rules = "\n".join(name_rules_lines + department_rules_lines)
+        prompt_text += extra_rules + "\n"
+    prompt_text += """
+
 ÖZEL İSTEK:
 - Açıklama alanlarında sadece olayın kendisini yaz
 - Öğrencinin adı ve soyadını açıklama alanlarına ekleme
@@ -418,6 +445,20 @@ JSON formatı örneği:
                 import re as _re
                 only_letters = "".join(ch for ch in val if ch.isalpha())
                 val = only_letters[:1].upper() if only_letters else ""
+            # Özel kural: bölüm alanlarında tek bölüm adı döndür
+            if ("bolum" in key_lower) or ("bölüm" in key_lower):
+                lowered = val.lower()
+                # Önce ayırıcılarla kes
+                for sep in [",", "/", "&", "|", ";"]:
+                    if sep in val:
+                        val = val.split(sep)[0]
+                # Bağlaçlara göre kes (ve/veya)
+                for conj in [" ve ", " veya "]:
+                    if conj in lowered:
+                        idx = lowered.index(conj)
+                        val = val[:idx]
+                        break
+                val = str(val).strip()
             # Genel: güvenli string
             if val:
                 try:
@@ -426,6 +467,33 @@ JSON formatı örneği:
                     result[ph] = val.encode('utf-8', errors='replace').decode('utf-8')
             else:
                 result[ph] = ""
+
+        # İsim alanları için ek post-processing: fullname <-> ad/soyad senkronizasyonu
+        try:
+            # Anahtarların küçük harf normalize edilmiş haritasını oluştur
+            keys_by_lower = {k.lower(): k for k in result.keys()}
+            # Varyantları bul
+            fullname_key = next((k for lk, k in keys_by_lower.items() if ("ogrenci" in lk and ("adi_soyadi" in lk or "ad_soyad" in lk))), None)
+            name_key = next((k for lk, k in keys_by_lower.items() if ("ogrenci" in lk and ("ad" in lk or "adi" in lk or "isim" in lk) and "soyad" not in lk)), None)
+            surname_key = next((k for lk, k in keys_by_lower.items() if ("ogrenci" in lk and ("soyad" in lk or "soyadi" in lk))), None)
+
+            # Eğer fullname boş ama ad ve soyad doluysa, birleştir
+            if fullname_key and (not result.get(fullname_key)) and name_key and surname_key and result.get(name_key) and result.get(surname_key):
+                combined = f"{str(result.get(name_key)).strip()} {str(result.get(surname_key)).strip()}".strip()
+                result[fullname_key] = combined
+            # Eğer ad/soyad boş ama fullname doluysa, basit böl
+            if fullname_key and result.get(fullname_key) and ((name_key and not result.get(name_key)) or (surname_key and not result.get(surname_key))):
+                fullname_val = str(result.get(fullname_key)).strip()
+                parts = [p for p in fullname_val.split() if p]
+                if len(parts) >= 2:
+                    first = " ".join(parts[:-1])
+                    last = parts[-1]
+                    if name_key and not result.get(name_key):
+                        result[name_key] = first
+                    if surname_key and not result.get(surname_key):
+                        result[surname_key] = last
+        except Exception:
+            pass
         
         return result
     except Exception as e:
@@ -531,10 +599,21 @@ def main():
         st.session_state["current_session_name"] = ""
     if "api_key" not in st.session_state:
         st.session_state["api_key"] = ""
+    # Form selection related state
+    if "selected_form_group" not in st.session_state:
+        st.session_state["selected_form_group"] = None  # Örn: "Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8"
+    if "form_group_applied" not in st.session_state:
+        st.session_state["form_group_applied"] = None
+    if "templates_initialized_for" not in st.session_state:
+        st.session_state["templates_initialized_for"] = None
+    if "selected_templates" not in st.session_state:
+        st.session_state["selected_templates"] = []
 
     # Page routing
     if st.session_state["page"] == "session_manager":
         show_session_manager()
+    elif st.session_state["page"] == "form_selector":
+        show_form_selector()
     elif st.session_state["page"] == "voice_app":
         show_voice_app()
     else:
@@ -604,7 +683,12 @@ def show_session_manager():
                         if st.button(f"🚀 Aç", key=f"open_{session['session_id']}"):
                             st.session_state["current_session_id"] = session['session_id']
                             st.session_state["current_session_name"] = session['session_name']
-                            st.session_state["page"] = "voice_app"
+                            # Form seçim sayfasına yönlendir ve önceki seçimleri sıfırla
+                            st.session_state["selected_form_group"] = None
+                            st.session_state["form_group_applied"] = None
+                            st.session_state["templates_initialized_for"] = None
+                            st.session_state["selected_templates"] = []
+                            st.session_state["page"] = "form_selector"
                             st.rerun()
                         
                         if st.button(f"🗑️ Sil", key=f"delete_{session['session_id']}"):
@@ -641,18 +725,57 @@ def show_session_manager():
                 st.success("Yeni session başlatıldı!")
                 st.session_state["current_session_id"] = session_id
                 st.session_state["current_session_name"] = session_name
-                st.session_state["page"] = "voice_app"
+                # Yeni session sonrası form seçim ekranına git
+                st.session_state["page"] = "form_selector"
                 # Yeni session'da transkript ve mapping boşlansın
                 st.session_state["current_transcript"] = ""
                 st.session_state["transcript_loaded_for"] = session_id
                 st.session_state["current_mapping"] = {}
                 st.session_state["mapping_loaded_for"] = session_id
                 st.session_state["results"] = None
+                # Form seçim state'leri
+                st.session_state["selected_form_group"] = None
+                st.session_state["form_group_applied"] = None
+                st.session_state["templates_initialized_for"] = None
+                st.session_state["selected_templates"] = []
                 st.rerun()
             else:
                 st.error("Session oluşturulamadı!")
         
         st.info("💡 **İpucu:** Session başlattıktan sonra öğrenci bilgilerini sesli girdi ile kaydedin.")
+
+def show_form_selector():
+    """Form (Ek) seçim ekranı"""
+    current_session_id = st.session_state.get("current_session_id")
+    current_session_name = st.session_state.get("current_session_name", "Bilinmeyen Session")
+    if not current_session_id:
+        st.error("Session bilgisi bulunamadı!")
+        if st.button("🏠 Session Yöneticisine Dön"):
+            st.session_state["page"] = "session_manager"
+            st.rerun()
+        return
+
+    st.title("🧩 Hangi Ek doldurulacak?")
+    st.caption(f"{current_session_name}")
+    st.markdown("Seçiminiz bu session için şablonları otomatik işaretler. İstediğiniz zaman değiştirebilirsiniz.")
+
+    options = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8"]
+    default_idx = options.index(st.session_state.get("selected_form_group")) if st.session_state.get("selected_form_group") in options else 0
+    selected = st.radio("Form seti", options=options, index=default_idx, horizontal=True)
+
+    col_go, col_back = st.columns([1, 1])
+    with col_go:
+        if st.button("Devam et ➜", type="primary", use_container_width=True):
+            st.session_state["selected_form_group"] = selected
+            st.session_state["form_group_applied"] = None  # Voice sayfasında yeniden uygula
+            st.session_state["templates_initialized_for"] = None
+            st.session_state["selected_templates"] = []
+            st.session_state["page"] = "voice_app"
+            st.rerun()
+    with col_back:
+        if st.button("↩️ Session listesine dön", use_container_width=True):
+            st.session_state["page"] = "session_manager"
+            st.rerun()
 
 def show_voice_app():
     """Ana ses uygulama arayüzü"""
@@ -685,13 +808,18 @@ def show_voice_app():
         st.session_state["transcript_loaded_for"] = current_session_id
     
     # Header
-    col_title, col_back = st.columns([4, 1])
+    col_title, col_actions = st.columns([4, 2])
     with col_title:
         st.title(f"🎯 {current_session_name}")
         st.caption(f"Session ID: {current_session_id[:12]}...")
+        active_group = st.session_state.get("selected_form_group") or "Seçilmedi"
+        st.info(f"Aktif Form Seti: {active_group}")
     
-    with col_back:
-        if st.button("🏠 Geri Dön"):
+    with col_actions:
+        if st.button("🧩 Form setini değiştir"):
+            st.session_state["page"] = "form_selector"
+            st.rerun()
+        if st.button("🏠 Session listesi"):
             st.session_state["page"] = "session_manager"
             st.rerun()
     
@@ -725,11 +853,36 @@ def show_voice_app():
         if os.path.isdir(default_dir):
             available = sorted([f for f in os.listdir(default_dir) if f.lower().endswith(".docx")])
             if available:
+                # Form setine göre ön seçim hazırla (sadece ilk girişte uygula veya grup değiştiyse)
+                group = st.session_state.get("selected_form_group")
+                def _match_group_files(group_label: Optional[str], files: List[str]) -> List[str]:
+                    if not group_label:
+                        return []
+                    prefixes_map = {
+                        "Ek 1-2-3": ["Ek-1", "Ek-2", "Ek-3"],
+                        "Ek 4": ["Ek-4"],
+                        "Ek 6": ["Ek-6"],
+                        "Ek 8": ["Ek-8"],
+                    }
+                    prefixes = prefixes_map.get(group_label, [])
+                    return [f for f in files if any(f.startswith(pfx) for pfx in prefixes)]
+
+                should_apply_preselection = (
+                    st.session_state.get("templates_initialized_for") != current_session_id or
+                    st.session_state.get("form_group_applied") != group
+                )
+                if should_apply_preselection:
+                    preselected = _match_group_files(group, available)
+                    st.session_state["selected_templates"] = preselected
+                    st.session_state["templates_initialized_for"] = current_session_id
+                    st.session_state["form_group_applied"] = group
+
                 selected_names = st.multiselect(
-                    "Kullanılacak şablonları seçin", 
-                    options=available, 
-                    default=[],
-                    help="Seçtiğiniz şablonların tam önizlemesi aşağıda görüntülenecek"
+                    "Kullanılacak şablonları seçin",
+                    options=available,
+                    default=st.session_state.get("selected_templates", []),
+                    help="Seçtiğiniz şablonların tam önizlemesi aşağıda görüntülenecek",
+                    key="selected_templates"
                 )
             else:
                 st.info("Templates klasöründe .docx şablon bulunamadı.")
@@ -863,7 +1016,7 @@ def show_voice_app():
                 value=st.session_state.get("current_transcript", ""),
                 height=120,
                 disabled=True,
-                help="Tüm ses kayıtlarınız burada görünür"
+                help="Bu transkript session bazında saklanır ve tüm Ek formlarında kullanılabilir"
             )
         
         with col_clear:
