@@ -1,0 +1,18 @@
+{
+  "session_id": "sess_3eb962c5",
+  "session_name": "123 - Zeynep Yılmaz",
+  "extracted_data": {
+    "{sinav_gun}": "9",
+    "{ogrenci_adi_soyadi}": "Zeynep Yılmaz",
+    "{aciklama}": "İstatistik dersi sınavında başka bir öğrencinin kâğıdına bakarak kopya çekme iddiası ile ilgili bölüm/program başkanının yazı ve tutanağı ile ilgi",
+    "{bolum}": "işletme",
+    "{ogrenci_no}": "123",
+    "{sinav_yil}": "2024",
+    "{sinav_ay}": "ağustos",
+    "{ogrenci_tc}": "234"
+  },
+  "transcript": "Zeynep Yılmaz isimli öğrenci, istatistik dersi sınavında başka bir öğrencinin kâğıdına bakarak kopya çekti. Öğrencinin numarası 123.",
+  "created_date": "2025-08-25T13:26:23.491252",
+  "last_modified": "2025-08-25T13:28:21.538117",
+  "voice_count": 6
+}
