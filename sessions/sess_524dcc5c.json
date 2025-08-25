@@ -1,0 +1,32 @@
+{
+  "session_id": "sess_524dcc5c",
+  "session_name": "351 - Emre Seven",
+  "extracted_data": {
+    "{ogrenci_adi_soyadi}": "Emre Seven",
+    "{isbu_saat}": "",
+    "{bolum}": "",
+    "{sinav_yil}": "",
+    "{sinav_saati_bitis}": "",
+    "{derslik}": "13",
+    "{sinav_ay}": "",
+    "{ders_adi}": "",
+    "{hafta_gunu}": "Perşembe",
+    "{isbu_ay}": "",
+    "{aciklama}": "kopya çekerken yakalandı.",
+    "{olay_saati}": "13:50",
+    "{isbu_yil}": "",
+    "{isbu_gun}": "",
+    "{gozetmen_adi_1}": "Sümeyye",
+    "{ogrenci_tc}": "",
+    "{bolum_baskanligi}": "",
+    "{blok}": "B",
+    "{sinav_gun}": "",
+    "{ogrenci_no}": "351",
+    "{gozetmen_adi_2}": "Kemal",
+    "{sinav_saati_baslangic}": ""
+  },
+  "transcript": "Emre Seven isimli öğrenci Perşembe günü saat 13.50'de B blok 13 numaralı lastikte kopya çekerken yakalandı. Öğrencinin numarası 351 Birinci gözetmenin adı Sümeyye, ikinci gözetmenin adı Kemal.",
+  "created_date": "2025-08-25T11:25:26.469768",
+  "last_modified": "2025-08-25T11:50:07.273386",
+  "voice_count": 4
+}

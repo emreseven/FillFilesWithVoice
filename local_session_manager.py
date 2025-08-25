@@ -56,6 +56,7 @@ class LocalSessionManager:
                 "session_id": session_id,
                 "session_name": session_name,
                 "extracted_data": {},
+                "transcript": "",  # Transcript verisi için alan
                 "created_date": now,
                 "last_modified": now,
                 "voice_count": 0
@@ -159,6 +160,38 @@ class LocalSessionManager:
             
         except Exception as e:
             st.error(f"Session güncelleme başarısız: {e}")
+            return False
+    
+    def update_session_transcript(self, session_id: str, transcript: str) -> bool:
+        """Session transcript verilerini güncelle"""
+        try:
+            # Mevcut session'ı al
+            session_data = self.get_session(session_id)
+            if not session_data:
+                st.error(f"Session bulunamadı: {session_id}")
+                return False
+            
+            # Transcript'i güncelle
+            session_data['transcript'] = transcript
+            
+            # Son değişiklik tarihini güncelle
+            session_data['last_modified'] = datetime.now().isoformat()
+            
+            # Session dosyasını kaydet
+            session_file = self._get_session_file_path(session_id)
+            with open(session_file, 'w', encoding='utf-8') as f:
+                json.dump(session_data, f, ensure_ascii=False, indent=2)
+            
+            # Index'i güncelle
+            sessions_index = self._load_sessions_index()
+            if session_id in sessions_index:
+                sessions_index[session_id]['last_modified'] = session_data['last_modified']
+                self._save_sessions_index(sessions_index)
+            
+            return True
+            
+        except Exception as e:
+            st.error(f"Transcript güncelleme başarısız: {e}")
             return False
     
     def delete_session(self, session_id: str) -> bool:

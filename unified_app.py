@@ -322,6 +322,8 @@ def parse_json_loose(s: str) -> Dict[str, str]:
     
     return {}
 
+# Regex tabanlı fallback kaldırıldı (tüm çıkarım LLM ile yapılacak)
+
 def infer_placeholder_values(
     transcript: str,
     placeholders: Set[str],
@@ -337,6 +339,16 @@ def infer_placeholder_values(
     client = OpenAI(api_key=api_key)
     ph_list = sorted(list(placeholders))
     
+    # Mevcut (kullanıcı tarafından girilmiş) değerleri al ve prompt'a ekle (değiştirme)
+    existing_values = {}
+    try:
+        existing_values = {
+            k: v for k, v in (st.session_state.get("current_mapping", {}) or {}).items()
+            if k in placeholders and str(v).strip()
+        }
+    except Exception:
+        existing_values = {}
+
     # Gelişmiş prompt
     prompt_text = f"""
 SES TRANSKRİPTİ:
@@ -361,11 +373,29 @@ GÖREV:
 4. Çıkaramadığın bilgiler için boş string ("") bırak
 5. SADECE JSON formatında cevap ver
 
+MEVCUT DEĞERLER (DEĞİŞTİRME):
+""" + json.dumps(existing_values, ensure_ascii=False, indent=2) + """
+
+ÇIKTI KURALLARI:
+- JSON anahtarları, placeholder stringleriyle birebir aynı olmalı (örnek: {ogrenci_no})
+- Mevcut dolu alanları DEĞİŞTİRME; sadece boş olanları doldur
+- Tarih ve saat alanları bağlama uygun normalize edilmeli (tarih: YYYY-MM-DD veya {gun,ay,yil}; saat: HH:MM)
+- Sayısal alanlar (no, tc vb.) sadece rakam içersin
+- İsim alanlarında gereksiz ekleri çıkar; açıklama alanlarında öğrenci ismi geçmesin
+ - {blok} alanı sadece tek büyük harf (A-Z) olmalı (ör: A, B, C). Tahmin etme; transkriptte yoksa boş bırak.
+ - {ogrenci_adi_soyadi} alanına öğrencinin tam adı ve soyadı gelmeli (örn: "Emre Yılmaz").
+
+ÖZEL İSTEK:
+- Açıklama alanlarında sadece olayın kendisini yaz
+- Öğrencinin adı ve soyadını açıklama alanlarına ekleme
+- Sadece ne olduğunu objektif şekilde açıkla
+ - Verilmeyen bilgileri uydurma; emin değilsen boş string ver
+
 JSON formatı örneği:
 """ + "{" + ", ".join([f'"{ph}": "değer_veya_boş_string"' for ph in ph_list[:3]]) + "...}"
 
     messages = [
-        {"role": "system", "content": "Sen uzman bir belge analiz asistanısın. Ses transkriptini ve belge bağlamını analiz ederek doğru bilgileri çıkarırsın. Sadece JSON döndür."},
+        {"role": "system", "content": "Uzman bir bilgi çıkarım asistanısın. Kullanıcı transkriptini ve template bağlamlarını analiz ederek, placeholder anahtarlarıyla birebir eşleşen JSON üretirsin. Mevcut dolu değerleri asla değiştirme; sadece eksik (boş) alanları doldur. Tarih/saat ve sayısal alanları normalize et. Açıklama alanında öğrenci ismi geçmesin. Sadece transkriptte açıkça geçen bilgileri kullan; emin olmadığın durumda boş string ver. Sadece JSON döndür."},
         {"role": "user", "content": prompt_text},
     ]
     
@@ -373,19 +403,27 @@ JSON formatı örneği:
         resp = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.1,
+            temperature=0.0,
         )
         content = resp.choices[0].message.content if resp and resp.choices else "{}"
         data = parse_json_loose(content or "{}")
         
         result = {}
         for ph in placeholders:
-            if ph in data and str(data[ph]).strip():
-                # Unicode karakterleri güvenli şekilde işle
+            key_lower = ph.lower()
+            raw_val = str(data.get(ph, "")).strip() if isinstance(data, dict) else ""
+            val = raw_val
+            # Özel kural: {blok} sadece tek harf (A-Z)
+            if "blok" in key_lower:
+                import re as _re
+                only_letters = "".join(ch for ch in val if ch.isalpha())
+                val = only_letters[:1].upper() if only_letters else ""
+            # Genel: güvenli string
+            if val:
                 try:
-                    result[ph] = str(data[ph]).strip()
+                    result[ph] = str(val).strip()
                 except UnicodeEncodeError:
-                    result[ph] = data[ph].encode('utf-8', errors='replace').decode('utf-8')
+                    result[ph] = val.encode('utf-8', errors='replace').decode('utf-8')
             else:
                 result[ph] = ""
         
@@ -415,6 +453,15 @@ def extract_student_info(session_data):
             key_lower = key.lower().replace('{', '').replace('}', '')
             value_str = str(value).strip()
             
+            # Öğrenci dışı kişi alanlarını atla
+            skip_person_keywords = [
+                'gozetmen', 'gözetmen', 'ogretim', 'öğretim', 'elemani', 'elemanı',
+                'gorevli', 'görevli', 'bolum_baskanligi', 'bölüm başkanlığı', 'baskan', 'başkan',
+                'danisman', 'danışman', 'sifre', 'şifre', 'yetkili', 'imza'
+            ]
+            if any(k in key_lower for k in skip_person_keywords):
+                continue
+
             # Öğrenci numarası
             if 'ogrencino' in key_lower or 'ogrenci_no' in key_lower:
                 student_no = value_str
@@ -422,49 +469,46 @@ def extract_student_info(session_data):
                 student_no = value_str
             
             # Öğrenci adı
-            elif 'ad' in key_lower and 'soyad' not in key_lower:
+            elif ('ogrenci' in key_lower) and ('ad' in key_lower or 'adi' in key_lower or 'isim' in key_lower) and 'soyad' not in key_lower:
                 if not value_str.isdigit():
                     if student_name:
                         student_name = f"{value_str} {student_name}"
                     else:
                         student_name = value_str
-            elif 'soyad' in key_lower:
+            elif ('ogrenci' in key_lower) and ('soyad' in key_lower or 'soyadi' in key_lower):
                 if not value_str.isdigit():
                     if student_name:
                         student_name = f"{student_name} {value_str}"
                     else:
                         student_name = value_str
-            elif any(keyword in key_lower for keyword in ['isim', 'name', 'adi']):
+            elif 'ogrenci' in key_lower and any(keyword in key_lower for keyword in ['adi_soyadi', 'ad_soyad']):
                 if not value_str.isdigit():
                     student_name = value_str
     
     return student_no, student_name
 
 def update_session_name_if_needed(session_id, session_data):
-    """Öğrenci bilgileri varsa session ismini güncelle"""
+    """Öğrenci bilgileri varsa session ismini standart formata güncelle."""
     try:
+        def _format_standard(no: str, name: str) -> str:
+            safe_no = (no or "").strip()
+            safe_name = " ".join((name or "").split())
+            return f"{safe_no} - {safe_name}" if safe_no and safe_name else ""
+
         student_no, student_name = extract_student_info(session_data)
-        
         current_name = session_data.get('session_name', '')
-        if (student_no or student_name) and ('Yeni Session' in current_name or current_name.startswith('Session')):
-            if student_no and student_name:
-                new_name = f"{student_no} - {student_name}"
-            elif student_name:
-                new_name = f"{student_name}"
-            elif student_no:
-                new_name = f"Öğrenci No: {student_no}"
-            else:
-                return False
-            
-            sm = get_local_session_manager()
-            session_data['session_name'] = new_name
-            return sm.save_session(session_id, session_data)
-                
+
+        # Sadece her ikisi de varsa standart isim uygula
+        if student_no and student_name:
+            new_name = _format_standard(student_no, student_name)
+            if new_name and new_name != current_name:
+                sm = get_local_session_manager()
+                session_data['session_name'] = new_name
+                return sm.save_session(session_id, session_data)
+        return False
     except Exception as e:
         st.error(f"Session ismi güncellenirken hata: {e}")
         return False
-    
-    return False
 
 # ================== Ana Uygulama ==================
 
@@ -504,20 +548,21 @@ def show_session_manager():
     
     sm = get_local_session_manager()
     
-    # Arama çubuğu
-    search_term = st.text_input("🔍 Öğrenci Ara", placeholder="Öğrenci adı veya numarası...")
+    # Arama çubuğu (yalnızca öğrenci adı veya numarasına göre)
+    search_term = st.text_input("🔍 Öğrenci Ara", placeholder="Öğrenci adı veya öğrenci numarası...")
     
     # Session listesi
     sessions = sm.get_all_sessions()
     
-    # Arama filtresi
+    # Arama filtresi (yalnızca ad veya numara)
     if search_term:
+        q = search_term.lower().strip()
         filtered_sessions = []
         for session in sessions:
             student_no, student_name = extract_student_info(session)
-            if (student_no and search_term.lower() in student_no.lower()) or \
-               (student_name and search_term.lower() in student_name.lower()) or \
-               search_term.lower() in session['session_name'].lower():
+            match_no = bool(student_no and q in student_no.lower())
+            match_name = bool(student_name and q in student_name.lower())
+            if match_no or match_name:
                 filtered_sessions.append(session)
         sessions = filtered_sessions
     
@@ -537,12 +582,10 @@ def show_session_manager():
                 
                 if student_no and student_name:
                     display_title = f"👤 {student_no} - {student_name}"
-                elif student_name:
-                    display_title = f"👤 {student_name}"
-                elif student_no:
-                    display_title = f"👤 Öğrenci No: {student_no}"
                 else:
-                    display_title = f"📄 {session['session_name']}"
+                    # Standart dışı isim varsa da aynı formatla göster
+                    fallback_name = session.get('session_name', '')
+                    display_title = f"👤 {fallback_name}"
                 
                 with st.expander(display_title, expanded=False):
                     col_info, col_actions = st.columns([2, 1])
@@ -599,6 +642,12 @@ def show_session_manager():
                 st.session_state["current_session_id"] = session_id
                 st.session_state["current_session_name"] = session_name
                 st.session_state["page"] = "voice_app"
+                # Yeni session'da transkript ve mapping boşlansın
+                st.session_state["current_transcript"] = ""
+                st.session_state["transcript_loaded_for"] = session_id
+                st.session_state["current_mapping"] = {}
+                st.session_state["mapping_loaded_for"] = session_id
+                st.session_state["results"] = None
                 st.rerun()
             else:
                 st.error("Session oluşturulamadı!")
@@ -625,11 +674,15 @@ def show_voice_app():
         st.error("Session verisi yüklenemedi!")
         return
     
-    # Session state'leri initialize et
-    if "current_mapping" not in st.session_state:
-        st.session_state["current_mapping"] = session_data.get('extracted_data', {}).copy()
-    if "current_transcript" not in st.session_state:
-        st.session_state["current_transcript"] = ""
+    # Session state'leri initialize et (mapping ve transcript session bazlı yüklensin)
+    if st.session_state.get("mapping_loaded_for") != current_session_id:
+        st.session_state["current_mapping"] = {}
+        st.session_state["mapping_loaded_for"] = current_session_id
+        st.session_state["results"] = None
+    # Transkript, session bazlı yüklensin (diğer session'dan taşınmasın)
+    if st.session_state.get("transcript_loaded_for") != current_session_id:
+        st.session_state["current_transcript"] = session_data.get('transcript', "")
+        st.session_state["transcript_loaded_for"] = current_session_id
     
     # Header
     col_title, col_back = st.columns([4, 1])
@@ -675,7 +728,8 @@ def show_voice_app():
                 selected_names = st.multiselect(
                     "Kullanılacak şablonları seçin", 
                     options=available, 
-                    default=[]
+                    default=[],
+                    help="Seçtiğiniz şablonların tam önizlemesi aşağıda görüntülenecek"
                 )
             else:
                 st.info("Templates klasöründe .docx şablon bulunamadı.")
@@ -738,62 +792,66 @@ def show_voice_app():
             
             if not template_items:
                 st.warning("Önce şablon seçin.")
-            elif not union_placeholders:
+                return
+            if not union_placeholders:
                 st.warning("Şablonlarda placeholder bulunamadı.")
-            elif not effective_key:
+                return
+            if not effective_key:
                 st.warning("OpenAI API anahtarı girin.")
-            elif not audio_bytes:
-                st.warning("Ses kaydı yapın.")
-            else:
+                return
+
+            existing_transcript = (st.session_state.get("current_transcript", "") or "").strip()
+            merged_transcript = ""
+
+            if audio_bytes:
                 with st.spinner("Ses metne çevriliyor..."):
                     text = transcribe_audio_bytes(audio_bytes, effective_key)
-                
-                if text:
-                    # Transkripti birleştir
-                    existing_transcript = st.session_state.get("current_transcript", "")
-                    if existing_transcript:
-                        merged_transcript = f"{existing_transcript} {text.strip()}"
-                    else:
-                        merged_transcript = text.strip()
-                    
-                    st.session_state["current_transcript"] = merged_transcript
-                    
-                    with st.spinner("Bilgiler çıkarılıyor..."):
-                        ctx = aggregate_contexts_across_templates(template_items, union_placeholders)
-                        suggested = infer_placeholder_values(
-                            merged_transcript,
-                            union_placeholders,
-                            ctx,
-                            effective_key,
-                        )
-                        
-                        # Mevcut verilerle birleştir
-                        existing_data = st.session_state.get("current_mapping", {})
-                        conflicts = detect_conflicts(existing_data, suggested)
-                        
-                        if conflicts:
-                            st.warning(f"⚠️ {len(conflicts)} çakışma tespit edildi: {', '.join(conflicts)}")
-                        
-                        merged_data = merge_extracted_data(existing_data, suggested)
-                        st.session_state["current_mapping"] = merged_data
-                        
-                        # Session'a kaydet
-                        try:
-                            if sm.update_session_data(current_session_id, suggested, merge=True):
-                                filled_count = len([v for v in suggested.values() if v.strip()])
-                                st.success(f"✅ {filled_count} yeni bilgi eklendi ve kaydedildi!")
-                                
-                                # Session ismini güncelle
-                                updated_session = sm.get_session(current_session_id)
-                                if updated_session and update_session_name_if_needed(current_session_id, updated_session):
-                                    st.session_state["current_session_name"] = updated_session['session_name']
-                                    st.info("📝 Session ismi güncellendi!")
-                        except Exception as e:
-                            st.warning(f"Veriler çıkarıldı ama kaydetme sırasında hata: {e}")
-                        
-                        st.rerun()
-                else:
+                if not text:
                     st.error("Ses metne çevrilemedi.")
+                    return
+                merged_transcript = (existing_transcript + " " + text.strip()).strip() if existing_transcript else text.strip()
+                st.session_state["current_transcript"] = merged_transcript
+                sm.update_session_transcript(current_session_id, merged_transcript)
+            elif existing_transcript:
+                merged_transcript = existing_transcript
+            else:
+                st.warning("Ses kaydı yapın veya mevcut transkript bulunmuyor.")
+                return
+
+            with st.spinner("Bilgiler çıkarılıyor..."):
+                ctx = aggregate_contexts_across_templates(template_items, union_placeholders)
+                suggested = infer_placeholder_values(
+                    merged_transcript,
+                    union_placeholders,
+                    ctx,
+                    effective_key,
+                )
+                
+                # Mevcut verilerle birleştir
+                existing_data = st.session_state.get("current_mapping", {})
+                conflicts = detect_conflicts(existing_data, suggested)
+                
+                if conflicts:
+                    st.warning(f"⚠️ {len(conflicts)} çakışma tespit edildi: {', '.join(conflicts)}")
+                
+                merged_data = merge_extracted_data(existing_data, suggested)
+                st.session_state["current_mapping"] = merged_data
+                
+                # Session'a kaydet
+                try:
+                    if sm.update_session_data(current_session_id, suggested, merge=True):
+                        filled_count = len([v for v in suggested.values() if v.strip()])
+                        st.success(f"✅ {filled_count} yeni bilgi eklendi ve kaydedildi!")
+                        
+                        # Session ismini güncelle
+                        updated_session = sm.get_session(current_session_id)
+                        if updated_session and update_session_name_if_needed(current_session_id, updated_session):
+                            st.session_state["current_session_name"] = updated_session['session_name']
+                            st.info("📝 Session ismi güncellendi!")
+                except Exception as e:
+                    st.warning(f"Veriler çıkarıldı ama kaydetme sırasında hata: {e}")
+                
+                st.rerun()
     
     # Transkript gösterimi
     if st.session_state.get("current_transcript"):
@@ -812,6 +870,8 @@ def show_voice_app():
             st.write("")
             if st.button("🗑️ Temizle"):
                 st.session_state["current_transcript"] = ""
+                # Session'dan da transcript'i temizle
+                sm.update_session_transcript(current_session_id, "")
                 st.rerun()
     
     # Placeholder değerleri
@@ -874,9 +934,105 @@ def show_voice_app():
                 
                 st.markdown("---")
     
-    # Belge oluşturma
+    # Seçilen şablonların önizlemesi
     if template_items:
         st.markdown("---")
+        st.subheader("👁️ Seçilen Şablonların Önizlemesi")
+
+        for template_name, template_data in template_items:
+            # Basit dropdown (expander) ile tam içerik önizleme
+            with st.expander(f"📄 {template_name}", expanded=False):
+                try:
+                    # Word belgesinin tam metnini çıkar
+                    doc = Document(io.BytesIO(template_data))
+                    parts = []
+
+                    # Paragraflar
+                    for paragraph in doc.paragraphs:
+                        if paragraph.text.strip():
+                            parts.append(paragraph.text.strip())
+
+                    # Tablolar
+                    for table in doc.tables:
+                        for row in table.rows:
+                            cells = []
+                            for cell in row.cells:
+                                cell_text = " ".join([p.text.strip() for p in cell.paragraphs if p.text.strip()])
+                                if cell_text:
+                                    cells.append(cell_text)
+                            if cells:
+                                parts.append(" | ".join(cells))
+
+                    # Header/Footer
+                    for section in doc.sections:
+                        if section.header:
+                            for p in section.header.paragraphs:
+                                if p.text.strip():
+                                    parts.insert(0, f"[BAŞLIK: {p.text.strip()}]")
+                        if section.footer:
+                            for p in section.footer.paragraphs:
+                                if p.text.strip():
+                                    parts.append(f"[ALT BİLGİ: {p.text.strip()}]")
+
+                    full_text = "\n\n".join(parts).strip()
+
+                    if not full_text:
+                        st.info("Bu şablonda görüntülenebilir metin bulunamadı.")
+                    else:
+                        # Tüm placeholder'ları doğrudan metin üzerinden regex ile işle
+                        try:
+                            current_mapping = st.session_state.get("current_mapping", {}) or {}
+                            # Önizlemede işbu alanlarını da bugünün değeriyle doldur
+                            mapping_with_isbu = {
+                                **current_mapping,
+                                **today_isbu(datetime.now(IST))
+                            }
+                            import html as _html
+                            pattern = re.compile(r"\{[^}]+\}")
+
+                            def _replace_placeholder(match: re.Match) -> str:
+                                ph = match.group(0)
+                                # Hem tam eşleşme hem de kıvrıksız anahtar ile eşleşmeyi dene
+                                raw_val = str(mapping_with_isbu.get(ph, "")).strip()
+                                if not raw_val:
+                                    key_nobraces = ph.strip('{}')
+                                    # Önce {key} biçimindeki varyantları tara
+                                    for k, v in mapping_with_isbu.items():
+                                        if isinstance(k, str) and k.strip('{}').lower() == key_nobraces.lower():
+                                            raw_val = str(v).strip()
+                                            if raw_val:
+                                                break
+                                if raw_val:
+                                    return _html.escape(raw_val)
+                                return f"<span style=\"color:#ff4d4f;font-weight:700;\">{_html.escape(ph)}</span>"
+
+                            highlighted_text = pattern.sub(_replace_placeholder, full_text)
+                        except Exception:
+                            highlighted_text = full_text
+
+                        # Sade, tam genişlikte, ayrı scroll olmayan içerik
+                        st.markdown(
+                            f"""
+                            <div style="
+                                white-space: pre-wrap;
+                                word-wrap: break-word;
+                                line-height: 1.75;
+                                font-size: 16px;
+                                font-weight: 500;
+                                color: #ffffff;
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, 'Noto Sans', sans-serif;
+                                letter-spacing: 0.2px;
+                            ">
+                            {highlighted_text}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                except Exception as e:
+                    st.error(f"Şablon önizlemesi oluşturulamadı: {e}")
+    
+    # Belge oluşturma
+    if template_items:
         st.subheader("📄 Belge Oluşturma")
         
         if st.button("📄 Tüm Belgeleri Oluştur", type="primary", use_container_width=True):
@@ -890,6 +1046,11 @@ def show_voice_app():
                     for idx, (name, data) in enumerate(template_items):
                         doc = Document(io.BytesIO(data))
                         mapping = {k: v for k, v in current_mapping.items() if str(v).strip()}
+                        # İşbu alanlarını belge oluşturma anının tarihi/saatine sabitle
+                        mapping = {
+                            **mapping,
+                            **today_isbu(datetime.now(IST))
+                        }
                         replaced = replace_placeholders_in_document(doc, mapping)
                         
                         buf = io.BytesIO()

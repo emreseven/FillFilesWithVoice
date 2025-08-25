@@ -1,0 +1,32 @@
+{
+  "session_id": "sess_810c5438",
+  "session_name": "9A220053 - Ecem Nalbantoglu",
+  "extracted_data": {
+    "{ogrenci_adi_soyadi}": "Ecem Nalbantoglu",
+    "{isbu_saat}": "",
+    "{bolum}": "",
+    "{sinav_yil}": "",
+    "{sinav_saati_bitis}": "",
+    "{derslik}": "13",
+    "{sinav_ay}": "",
+    "{ders_adi}": "İşletme",
+    "{hafta_gunu}": "Perşembe",
+    "{isbu_ay}": "",
+    "{aciklama}": "Perşembe günü B blok 13 numaralı derslikte işletme dersinde kopya çekerken yakalandı.",
+    "{olay_saati}": "13:50",
+    "{isbu_yil}": "",
+    "{isbu_gun}": "",
+    "{gozetmen_adi_1}": "",
+    "{ogrenci_tc}": "",
+    "{bolum_baskanligi}": "",
+    "{blok}": "B",
+    "{sinav_gun}": "",
+    "{ogrenci_no}": "9A220053",
+    "{gozetmen_adi_2}": "",
+    "{sinav_saati_baslangic}": ""
+  },
+  "transcript": "Ecem Nalbantoglu isimli öğrenci Perşembe günü B blok 13 numaralı derslikte işletme dersinde kopya çekerken yakalandı. Öğrencinin numarası 9A220053 Olay 13.50'de oldu.",
+  "created_date": "2025-08-25T11:34:44.631414",
+  "last_modified": "2025-08-25T11:49:19.668620",
+  "voice_count": 3
+}
