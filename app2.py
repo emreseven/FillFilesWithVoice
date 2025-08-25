@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 from st_audiorec import st_audiorec
 
+
 import dateparser
 from docx import Document
 from openai import OpenAI
@@ -17,7 +18,7 @@ from openai import OpenAI
 # ================== Genel ==================
 IST = ZoneInfo("Europe/Istanbul")
 st.set_page_config(page_title="Kopya Tutanak Sistemi", page_icon="🧩", layout="wide")
-st.title("🧩 Kopya Tutanak Sistemi (Session)")
+st.title("🧩 Kopya Tutanak Sistemi (Session) ")
 
 # ---- Şablon dizini (sağlam) ----
 def detect_template_dir() -> str:
