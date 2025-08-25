@@ -15,7 +15,7 @@
     "{aciklama}": "kopya çekerken yakalandı.",
     "{olay_saati}": "13:50",
     "{isbu_yil}": "",
-    "{isbu_gun}": "",
+    "{isbu_gun}": "a",
     "{gozetmen_adi_1}": "Sümeyye",
     "{ogrenci_tc}": "",
     "{bolum_baskanligi}": "",
@@ -27,6 +27,6 @@
   },
   "transcript": "Emre Seven isimli öğrenci Perşembe günü saat 13.50'de B blok 13 numaralı lastikte kopya çekerken yakalandı. Öğrencinin numarası 351 Birinci gözetmenin adı Sümeyye, ikinci gözetmenin adı Kemal.",
   "created_date": "2025-08-25T11:25:26.469768",
-  "last_modified": "2025-08-25T11:50:07.273386",
-  "voice_count": 4
+  "last_modified": "2025-08-25T11:58:10.592349",
+  "voice_count": 5
 }

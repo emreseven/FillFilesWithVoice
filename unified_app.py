@@ -1010,21 +1010,10 @@ def show_voice_app():
                         except Exception:
                             highlighted_text = full_text
 
-                        # Sade, tam genişlikte, ayrı scroll olmayan içerik
+                        # Sade, tam genişlikte metin (inline renk ile)
                         st.markdown(
                             f"""
-                            <div style="
-                                white-space: pre-wrap;
-                                word-wrap: break-word;
-                                line-height: 1.75;
-                                font-size: 16px;
-                                font-weight: 500;
-                                color: #ffffff;
-                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, 'Noto Sans', sans-serif;
-                                letter-spacing: 0.2px;
-                            ">
-                            {highlighted_text}
-                            </div>
+                            <div style="white-space: pre-wrap; word-wrap: break-word; line-height: 1.75; font-size: 16px; font-weight: 500; color: #374151;">{highlighted_text}</div>
                             """,
                             unsafe_allow_html=True
                         )
