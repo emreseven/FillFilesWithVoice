@@ -14,6 +14,7 @@ from datetime import datetime, date, time
 from zoneinfo import ZoneInfo
 
 import streamlit as st
+import importlib
 from docx import Document
 import dateparser
 
@@ -26,14 +27,64 @@ try:
 except Exception:
     OpenAI = None
 
-# Mikrofon kütüphaneleri - streamlit-mic-recorder desteği
+# Mikrofon kütüphaneleri - birincil ve alternatifler
 MIC_IMPORT_ERROR: Optional[str] = None
-mic_recorder = None
+mic_recorder = None  # from streamlit_mic_recorder
+audio_recorder_fn = None  # from audio_recorder_streamlit
+st_audiorec_fn = None  # from st_audiorec
 
 try:
-    from streamlit_mic_recorder import mic_recorder
+    _mic_module = importlib.import_module("streamlit_mic_recorder")
+    mic_recorder = getattr(_mic_module, "mic_recorder", None)
 except Exception as e:
     MIC_IMPORT_ERROR = f"streamlit-mic-recorder yüklenemedi: {e}"
+
+try:
+    _ar_module = importlib.import_module("audio_recorder_streamlit")
+    audio_recorder_fn = getattr(_ar_module, "audio_recorder", None)
+except Exception:
+    pass
+
+try:
+    _sar_module = importlib.import_module("st_audiorec")
+    st_audiorec_fn = getattr(_sar_module, "st_audiorec", None)
+except Exception:
+    pass
+
+def render_audio_recorder_ui() -> Optional[bytes]:
+    """Tarayıcıdan ses kaydı al ve bytes döndür (mevcut bileşene göre)."""
+    # Öncelik: streamlit-mic-recorder
+    if mic_recorder is not None:
+        st.write("**Mikrofon ile Kayıt**")
+        rec_val = mic_recorder(
+            start_prompt="🎙️ Kaydı Başlat",
+            stop_prompt="⏹️ Kaydı Durdur",
+            just_once=False,
+            use_container_width=True,
+            key="unified_mic_recorder",
+        )
+        if isinstance(rec_val, dict) and rec_val.get("error"):
+            st.error(f"Mikrofon hatası: {rec_val['error']}")
+            return None
+        return bytes_from_mic_return(rec_val)
+
+    # Alternatif 1: audio-recorder-streamlit
+    if audio_recorder_fn is not None:
+        st.write("**Mikrofon ile Kayıt (alternatif)**")
+        rec_val = audio_recorder_fn()
+        return bytes_from_mic_return(rec_val) if rec_val else None
+
+    # Alternatif 2: streamlit-audiorec
+    if st_audiorec_fn is not None:
+        st.write("**Mikrofon ile Kayıt (alternatif)**")
+        rec_val = st_audiorec_fn()
+        return bytes_from_mic_return(rec_val) if rec_val else None
+
+    st.error("Mikrofon kütüphanesi mevcut değil.")
+    if MIC_IMPORT_ERROR:
+        st.error(MIC_IMPORT_ERROR)
+    st.info("Lütfen 'streamlit-mic-recorder' veya 'audio-recorder-streamlit' paketini kurun.")
+    return None
 
 # Zaman dilimi
 IST = ZoneInfo("Europe/Istanbul")
@@ -918,26 +969,7 @@ def show_voice_app():
     col_mic, col_btn = st.columns([3, 1])
     
     with col_mic:
-        audio_bytes = None
-        
-        # Mikrofon kaydı
-        if mic_recorder is not None:
-            st.write("**Mikrofon ile Kayıt**")
-            rec_val = mic_recorder(
-                start_prompt="🎙️ Kaydı Başlat",
-                stop_prompt="⏹️ Kaydı Durdur",
-                just_once=False,
-                use_container_width=True,
-                key="unified_mic_recorder",
-            )
-            if isinstance(rec_val, dict) and rec_val.get("error"):
-                st.error(f"Mikrofon hatası: {rec_val['error']}")
-            audio_bytes = bytes_from_mic_return(rec_val)
-        else:
-            st.error("Mikrofon kütüphanesi mevcut değil.")
-            if MIC_IMPORT_ERROR:
-                st.error(MIC_IMPORT_ERROR)
-            st.info("Lütfen 'streamlit-mic-recorder' paketini kurun: `pip install streamlit-mic-recorder`")
+        audio_bytes = render_audio_recorder_ui()
     
     with col_btn:
         if st.button("🧠 Analiz Et", use_container_width=True, type="primary"):
