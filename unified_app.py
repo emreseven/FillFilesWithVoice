@@ -759,7 +759,7 @@ def show_form_selector():
     st.caption(f"{current_session_name}")
     st.markdown("Seçiminiz bu session için şablonları otomatik işaretler. İstediğiniz zaman değiştirebilirsiniz.")
 
-    options = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8"]
+    options = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8", "Ek 9"]
     default_idx = options.index(st.session_state.get("selected_form_group")) if st.session_state.get("selected_form_group") in options else 0
     selected = st.radio("Form seti", options=options, index=default_idx, horizontal=True)
 
@@ -863,6 +863,7 @@ def show_voice_app():
                         "Ek 4": ["Ek-4"],
                         "Ek 6": ["Ek-6"],
                         "Ek 8": ["Ek-8"],
+                        "Ek 9": ["Ek-9"],
                     }
                     prefixes = prefixes_map.get(group_label, [])
                     return [f for f in files if any(f.startswith(pfx) for pfx in prefixes)]
