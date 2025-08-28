@@ -4,7 +4,7 @@
   "extracted_data": {
     "{ogrenci_adi_soyadi}": "Emre Seven",
     "{isbu_saat}": "",
-    "{bolum}": "Bölüm",
+    "{bolum}": "",
     "{sinav_yil}": "",
     "{sinav_saati_bitis}": "",
     "{derslik}": "13",
@@ -17,7 +17,7 @@
     "{isbu_yil}": "",
     "{isbu_gun}": "a",
     "{gozetmen_adi_1}": "Sümeyye",
-    "{ogrenci_tc}": "",
+    "{ogrenci_tc}": "120",
     "{bolum_baskanligi}": "",
     "{blok}": "B",
     "{sinav_gun}": "Perşembe",
@@ -26,10 +26,18 @@
     "{sinav_saati_baslangic}": "",
     "{okulno}": "351",
     "{tc_no}": "",
-    "{ad_soyad}": "Emre Seven"
+    "{ad_soyad}": "Emre Seven",
+    "{ogrenci_baba}": "",
+    "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}": "Kopya çektiğim için pişmanım.",
+    "{iddia_nedir}": "Kopya çekme iddiası",
+    "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "",
+    "{ogrenci_dg}": "",
+    "{iddilar_hakkinda_ne_diyorsunuz}": "Suçumu kabul ediyorum.",
+    "{fakülte}": "",
+    "{ogrenci_anne}": ""
   },
-  "transcript": "Emre Seven isimli öğrenci Perşembe günü saat 13.50'de B blok 13 numaralı lastikte kopya çekerken yakalandı. Öğrencinin numarası 351 Birinci gözetmenin adı Sümeyye, ikinci gözetmenin adı Kemal.",
+  "transcript": "Emre Seven isimli öğrenci Perşembe günü saat 13.50'de B blok 13 numaralı lastikte kopya çekerken yakalandı. Öğrencinin numarası 351 Birinci gözetmenin adı Sümeyye, ikinci gözetmenin adı Kemal. Öğrencinin TC'si 120",
   "created_date": "2025-08-25T11:25:26.469768",
-  "last_modified": "2025-08-28T12:55:57.708557",
-  "voice_count": 7
+  "last_modified": "2025-08-28T14:18:13.131123",
+  "voice_count": 12
 }

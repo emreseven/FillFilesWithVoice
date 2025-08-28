@@ -1027,18 +1027,17 @@ def show_voice_app():
     col_mic, col_btn = st.columns([3, 1])
     
     with col_mic:
-        audio_bytes = None
+        # Her zaman mikrofonu göster (genel transcript için)
+        audio_bytes = render_audio_recorder_ui()
+        # Ek 15 için ek olarak uzun metin alanını göster (transkripti değiştirmez)
         special_text_input = None
-        # Ek 15 için ses yerine uzun serbest metin de kabul et
         if st.session_state.get("selected_form_group") == "Ek 15":
             special_text_input = st.text_area(
                 "📝 Ek 15 İçerik (uzun metin)",
-                value=st.session_state.get("current_transcript", ""),
+                value="",
                 height=180,
-                help="Bu metin doğrudan AI analizine gönderilir ve 4 parçaya ayrılır."
+                help="Bu metin yalnızca Ek 15'in 4 özel alanını doldurmak için kullanılır. Genel transkripti değiştirmez."
             )
-        else:
-            audio_bytes = render_audio_recorder_ui()
     
     with col_btn:
         if st.button("🧠 Analiz Et", use_container_width=True, type="primary"):
@@ -1057,11 +1056,8 @@ def show_voice_app():
             existing_transcript = (st.session_state.get("current_transcript", "") or "").strip()
             merged_transcript = ""
 
-            if st.session_state.get("selected_form_group") == "Ek 15" and (special_text_input or existing_transcript):
-                merged_transcript = (existing_transcript + " " + special_text_input.strip()).strip() if (existing_transcript and special_text_input) else (special_text_input or existing_transcript)
-                st.session_state["current_transcript"] = merged_transcript
-                sm.update_session_transcript(current_session_id, merged_transcript)
-            elif audio_bytes:
+            merged_transcript = existing_transcript
+            if audio_bytes:
                 with st.spinner("Ses metne çevriliyor..."):
                     text = transcribe_audio_bytes(audio_bytes, effective_key)
                 if not text:
@@ -1070,33 +1066,46 @@ def show_voice_app():
                 merged_transcript = (existing_transcript + " " + text.strip()).strip() if existing_transcript else text.strip()
                 st.session_state["current_transcript"] = merged_transcript
                 sm.update_session_transcript(current_session_id, merged_transcript)
-            elif existing_transcript:
-                merged_transcript = existing_transcript
-            else:
-                st.warning("Ses kaydı yapın veya mevcut transkript bulunmuyor.")
-                return
 
             with st.spinner("Bilgiler çıkarılıyor..."):
                 ctx = aggregate_contexts_across_templates(template_items, union_placeholders)
-                # Ek 15 için özel talimatları uygula
-                extra_instructions = None
-                only_phs: Optional[Set[str]] = None
-                ph_expl: Optional[Dict[str, str]] = None
-                if st.session_state.get("selected_form_group") == "Ek 15":
-                    conf = SPECIAL_FORMS.get("Ek 15", {})
-                    only_phs = set(conf.get("expected_placeholders", []) or [])
-                    ph_expl = conf.get("placeholder_explanations") or {}
-                    extra_instructions = conf.get("custom_instructions") or None
+                # Genel ve özel (Ek 15) çıkarımları ayrı çalıştır ve birleştir
+                suggested: Dict[str, str] = {}
+                selected_group = st.session_state.get("selected_form_group")
 
-                suggested = infer_placeholder_values(
-                    merged_transcript,
-                    union_placeholders,
-                    ctx,
-                    effective_key,
-                    only_placeholders=only_phs,
-                    extra_instructions=extra_instructions,
-                    placeholder_explanations=ph_expl,
-                )
+                # Ek 15 özel seti
+                ek15_conf = SPECIAL_FORMS.get("Ek 15", {}) if selected_group == "Ek 15" else {}
+                ek15_set: Set[str] = set(ek15_conf.get("expected_placeholders", []) or [])
+
+                # 1) Genel çıkarım: özel olmayan placeholder'lar (veya Ek 15 değilse tümü)
+                general_placeholders: Set[str] = set(union_placeholders)
+                if ek15_set:
+                    general_placeholders = set(ph for ph in union_placeholders if ph not in ek15_set)
+                if general_placeholders:
+                    general_suggested = infer_placeholder_values(
+                        merged_transcript,
+                        general_placeholders,
+                        ctx,
+                        effective_key,
+                    )
+                    suggested.update(general_suggested or {})
+
+                # 2) Ek 15 çıkarımı: sadece Ek 15 alanları, özel talimat ve gerekirse özel metin
+                if ek15_set:
+                    special_text = (special_text_input or "").strip()
+                    if special_text:
+                        ph_expl = ek15_conf.get("placeholder_explanations") or {}
+                        extra_instr = ek15_conf.get("custom_instructions") or None
+                        ek15_suggested = infer_placeholder_values(
+                            special_text,
+                            ek15_set,
+                            ctx,
+                            effective_key,
+                            extra_instructions=extra_instr,
+                            placeholder_explanations=ph_expl,
+                        )
+                        # Özel alanlar genel sonuçların üzerine yazsın
+                        suggested.update(ek15_suggested or {})
                 
                 # Mevcut verilerle birleştir
                 existing_data = st.session_state.get("current_mapping", {})
