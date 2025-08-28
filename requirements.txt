@@ -1,12 +1,14 @@
 # Core dependencies
 streamlit>=1.28.0
-openai>=1.0.0
-python-docx>=0.8.11
+openai>=1.7.0,<2
+python-docx==0.8.11
+dateparser>=1.1.8
+tzdata>=2024.1
 
 # Optional dependency for microphone recording
-# Note: streamlit-mic-recorder may have installation issues on some systems
-# If it fails to install, the app will still work but mic recording will be disabled
-streamlit-mic-recorder>=0.1.0
+# Streamlit Cloud compatible version pin
+streamlit-mic-recorder==0.0.8
+audio-recorder-streamlit>=0.0.8
 
 # Local session management - no external dependencies needed
 
