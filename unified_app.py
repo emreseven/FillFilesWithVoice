@@ -28,18 +28,23 @@ from local_session_manager import get_local_session_manager, merge_extracted_dat
 SPECIAL_FORMS: Dict[str, Dict[str, object]] = {
     "Ek 15": {
         "expected_placeholders": [
-            # "{metin1}", "{metin2}", "{metin3}", "{metin4}"
+            "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}",
+            "{iddilar_hakkinda_ne_diyorsunuz}",
+            "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}",
+            "{iddia_nedir}",
         ],
         "placeholder_explanations": {
-            # "{metin1}": "Uzun metnin 1. kısmı – giriş/özet",
-            # "{metin2}": "Uzun metnin 2. kısmı – olayların detayları",
-            # "{metin3}": "Uzun metnin 3. kısmı – değerlendirme/analiz",
-            # "{metin4}": "Uzun metnin 4. kısmı – sonuç/son talep",
+            "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}": "Şüpheli olayla ilgili eklemek istediği ek açıklamalar (kısa, öz).",
+            "{iddilar_hakkinda_ne_diyorsunuz}": "Öğrencinin iddialara cevabı/ifadesi; kabul/inkâr ve gerekçe.",
+            "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "Tutanağa dair ekleme/çıkarma isteği; varsa düzeltmeler.",
+            "{iddia_nedir}": "Hakkındaki iddianın özeti; kopya iddiasının kısa tanımı.",
         },
         "custom_instructions": (
-            "Kullanıcının verdiği tek bir uzun metni bağlama uygun şekilde dört parçaya ayır. "
-            "Parçaları şablondaki ilgili alanlara yerleştir. Verilmeyen bilgileri uydurma; emin değilsen boş bırak. "
-            "Sadece listedeki anahtarlar için değer üret ve başka anahtar üretme."
+            "Aşağıdaki tek bir uzun metin, öğrencinin kendi ifadeleridir. Bu metni analiz ederek dört soruya bağlama uygun, "
+            "kısa ve net yanıtlar üret. Her placeholder için yalnızca ilgili cevabı ver. Açıkça geçmeyen bilgiyi uydurma; "
+            "emin değilsen boş string bırak. Kişi isimlerini ve gereksiz tekrarları yazma. Yalnızca şu anahtarlar için çıktı ver: "
+            "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}, {iddilar_hakkinda_ne_diyorsunuz}, "
+            "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}, {iddia_nedir}."
         ),
     }
 }
