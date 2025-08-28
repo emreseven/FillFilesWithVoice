@@ -21,6 +21,29 @@ import dateparser
 # Local session management import
 from local_session_manager import get_local_session_manager, merge_extracted_data, detect_conflicts
 
+# Özel form davranışları (Ek bazlı özel prompt ve alan kısıtlama)
+# Burada Ek 15 için, uzun metni 4 parçaya ayırma talimatını tanımlayabilirsiniz.
+# expected_placeholders: Şablondaki TAM placeholder anahtarları (örn: "{metin1}")
+# placeholder_explanations: Her anahtar için kısa açıklama (opsiyonel)
+SPECIAL_FORMS: Dict[str, Dict[str, object]] = {
+    "Ek 15": {
+        "expected_placeholders": [
+            # "{metin1}", "{metin2}", "{metin3}", "{metin4}"
+        ],
+        "placeholder_explanations": {
+            # "{metin1}": "Uzun metnin 1. kısmı – giriş/özet",
+            # "{metin2}": "Uzun metnin 2. kısmı – olayların detayları",
+            # "{metin3}": "Uzun metnin 3. kısmı – değerlendirme/analiz",
+            # "{metin4}": "Uzun metnin 4. kısmı – sonuç/son talep",
+        },
+        "custom_instructions": (
+            "Kullanıcının verdiği tek bir uzun metni bağlama uygun şekilde dört parçaya ayır. "
+            "Parçaları şablondaki ilgili alanlara yerleştir. Verilmeyen bilgileri uydurma; emin değilsen boş bırak. "
+            "Sadece listedeki anahtarlar için değer üret ve başka anahtar üretme."
+        ),
+    }
+}
+
 # OpenAI import
 try:
     from openai import OpenAI
@@ -381,6 +404,9 @@ def infer_placeholder_values(
     contexts: Dict[str, List[str]],
     api_key: str,
     model: str = "gpt-4o-mini",
+    only_placeholders: Optional[Set[str]] = None,
+    extra_instructions: Optional[str] = None,
+    placeholder_explanations: Optional[Dict[str, str]] = None,
 ) -> Dict[str, str]:
     """AI ile placeholder değerlerini çıkar"""
     if OpenAI is None:
@@ -389,6 +415,15 @@ def infer_placeholder_values(
     
     client = OpenAI(api_key=api_key)
     ph_list = sorted(list(placeholders))
+    # Eğer sadece belirli placeholder'lar isteniyorsa, set'i daralt
+    if only_placeholders:
+        wanted = {p.strip("{}").lower() for p in only_placeholders}
+        filtered: List[str] = []
+        for ph in ph_list:
+            key_nb = ph.strip("{}").lower()
+            if key_nb in wanted:
+                filtered.append(ph)
+        ph_list = filtered or ph_list
     
     # Mevcut (kullanıcı tarafından girilmiş) değerleri al ve prompt'a ekle (değiştirme)
     existing_values = {}
@@ -471,6 +506,21 @@ EK ÖZEL KURALLAR:
 
 JSON formatı örneği:
 """ + "{" + ", ".join([f'"{ph}": "değer_veya_boş_string"' for ph in ph_list[:3]]) + "...}"
+
+    # Ek özel talimatlar/anahtar açıklamaları
+    if placeholder_explanations:
+        try:
+            lines = []
+            for ph in ph_list:
+                desc = placeholder_explanations.get(ph) or placeholder_explanations.get(ph.strip("{}"))
+                if desc:
+                    lines.append(f"- {ph}: {desc}")
+            if lines:
+                prompt_text += "\nANAHTAR AÇIKLAMALARI:\n" + "\n".join(lines)
+        except Exception:
+            pass
+    if extra_instructions:
+        prompt_text += "\nEK TALİMATLAR:\n" + str(extra_instructions) + "\n"
 
     messages = [
         {"role": "system", "content": "Uzman bir bilgi çıkarım asistanısın. Kullanıcı transkriptini ve template bağlamlarını analiz ederek, placeholder anahtarlarıyla birebir eşleşen JSON üretirsin. Mevcut dolu değerleri asla değiştirme; sadece eksik (boş) alanları doldur. Tarih/saat ve sayısal alanları normalize et. Açıklama alanında öğrenci ismi geçmesin. Sadece transkriptte açıkça geçen bilgileri kullan; emin olmadığın durumda boş string ver. Sadece JSON döndür."},
@@ -810,7 +860,7 @@ def show_form_selector():
     st.caption(f"{current_session_name}")
     st.markdown("Seçiminiz bu session için şablonları otomatik işaretler. İstediğiniz zaman değiştirebilirsiniz.")
 
-    options = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8", "Ek 9", "Ek 11"]
+    options = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8", "Ek 9", "Ek 11", "Ek 15"]
     default_idx = options.index(st.session_state.get("selected_form_group")) if st.session_state.get("selected_form_group") in options else 0
     selected = st.radio("Form seti", options=options, index=default_idx, horizontal=True)
 
@@ -916,6 +966,7 @@ def show_voice_app():
                         "Ek 8": ["Ek-8"],
                         "Ek 9": ["Ek-9"],
                         "Ek 11": ["Ek-11"],
+                        "Ek 15": ["Ek-15"],
                     }
                     prefixes = prefixes_map.get(group_label, [])
                     return [f for f in files if any(f.startswith(pfx) for pfx in prefixes)]
@@ -971,7 +1022,18 @@ def show_voice_app():
     col_mic, col_btn = st.columns([3, 1])
     
     with col_mic:
-        audio_bytes = render_audio_recorder_ui()
+        audio_bytes = None
+        special_text_input = None
+        # Ek 15 için ses yerine uzun serbest metin de kabul et
+        if st.session_state.get("selected_form_group") == "Ek 15":
+            special_text_input = st.text_area(
+                "📝 Ek 15 İçerik (uzun metin)",
+                value=st.session_state.get("current_transcript", ""),
+                height=180,
+                help="Bu metin doğrudan AI analizine gönderilir ve 4 parçaya ayrılır."
+            )
+        else:
+            audio_bytes = render_audio_recorder_ui()
     
     with col_btn:
         if st.button("🧠 Analiz Et", use_container_width=True, type="primary"):
@@ -990,7 +1052,11 @@ def show_voice_app():
             existing_transcript = (st.session_state.get("current_transcript", "") or "").strip()
             merged_transcript = ""
 
-            if audio_bytes:
+            if st.session_state.get("selected_form_group") == "Ek 15" and (special_text_input or existing_transcript):
+                merged_transcript = (existing_transcript + " " + special_text_input.strip()).strip() if (existing_transcript and special_text_input) else (special_text_input or existing_transcript)
+                st.session_state["current_transcript"] = merged_transcript
+                sm.update_session_transcript(current_session_id, merged_transcript)
+            elif audio_bytes:
                 with st.spinner("Ses metne çevriliyor..."):
                     text = transcribe_audio_bytes(audio_bytes, effective_key)
                 if not text:
@@ -1007,11 +1073,24 @@ def show_voice_app():
 
             with st.spinner("Bilgiler çıkarılıyor..."):
                 ctx = aggregate_contexts_across_templates(template_items, union_placeholders)
+                # Ek 15 için özel talimatları uygula
+                extra_instructions = None
+                only_phs: Optional[Set[str]] = None
+                ph_expl: Optional[Dict[str, str]] = None
+                if st.session_state.get("selected_form_group") == "Ek 15":
+                    conf = SPECIAL_FORMS.get("Ek 15", {})
+                    only_phs = set(conf.get("expected_placeholders", []) or [])
+                    ph_expl = conf.get("placeholder_explanations") or {}
+                    extra_instructions = conf.get("custom_instructions") or None
+
                 suggested = infer_placeholder_values(
                     merged_transcript,
                     union_placeholders,
                     ctx,
                     effective_key,
+                    only_placeholders=only_phs,
+                    extra_instructions=extra_instructions,
+                    placeholder_explanations=ph_expl,
                 )
                 
                 # Mevcut verilerle birleştir
