@@ -1,5 +1,6 @@
 # unified_app.py - Sesli Belge Doldurma Sistemi (Birleşik Versiyon)
 # (GÜNCEL) EK-15 geliştirmeleri + UTF-8 sağlamlaştırma
+# Değişiklik: Ek-15 ayrıntılı UI gizlendi, kısa ifadenin yanına "İfade üret" butonu eklendi.
 
 import io
 import os
@@ -18,6 +19,11 @@ import streamlit as st
 import importlib
 from docx import Document
 import dateparser
+
+# ======= ÖZEL AYAR =======
+# Detaylı Ek-15 üretim ızgarasını göstermeyi kapat (kodu silmeden)
+SHOW_DETAILED_EK15_UI = False
+EK15_GENERATE_BUTTON_LABEL = "📝 İfade üret (Ek-15 – 4 cevap)"
 
 # Local session management import
 from local_session_manager import get_local_session_manager, merge_extracted_data, detect_conflicts
@@ -330,6 +336,76 @@ def parse_json_loose(s: str) -> Dict[str, str]:
     except Exception:
         pass
     return {}
+def infer_placeholder_values(
+    transcript: str,
+    placeholders: Set[str],
+    contexts: Dict[str, List[str]],
+    api_key: str,
+    model: str = "gpt-4o-mini",
+) -> Dict[str, str]:
+    """
+    Verilen transcript'ten ve şablon bağlamlarından, istenen placeholder'lar için değer çıkarır.
+    Sadece verilen placeholder anahtarları döner. Bulunamayanlar için "" döndürür.
+    """
+    result: Dict[str, str] = {}
+
+    # OpenAI yoksa veya api_key boşsa, boş sözlük döndür (uygun uyarılar zaten üst akışta var)
+    if OpenAI is None or not (api_key or "").strip():
+        return result
+
+    # İstek gövdesi
+    placeholder_list = sorted(list(placeholders))
+    ctx_lines = []
+    for ph in placeholder_list:
+        tips = contexts.get(ph, []) or []
+        if tips:
+            for i, s in enumerate(tips, 1):
+                ctx_lines.append(f"- {ph} [{i}]: {safe_str(s)}")
+        else:
+            ctx_lines.append(f"- {ph}: (bağlam örneği yok)")
+
+    system = safe_str(
+        "Sen bir belge doldurma asistanısın. Kullanıcı transkriptinden, "
+        "yalnızca istenen placeholder'lar için kısa ve doğrudan değerler çıkarırsın. "
+        "Uydurma bilgi ekleme. Tarih/saatleri mümkünse dd.MM.yyyy ve HH:MM biçiminde ver."
+    )
+
+    user = safe_str(
+        "TRANSKRIPT:\n"
+        f"{transcript.strip()}\n\n"
+        "PLACEHOLDER BAĞLAMLARI:\n"
+        + "\n".join(ctx_lines) +
+        "\n\nÇIKTI FORMAT:\n"
+        "{\n"
+        '  "{placeholder}": "değer veya boş string"\n'
+        "}\n"
+        "Sadece şu anahtarları kullan: "
+        + ", ".join(placeholder_list)
+        + ". Başka anahtar ekleme."
+    )
+
+    try:
+        client = OpenAI(api_key=api_key.strip())
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user}],
+            temperature=0.2,
+            top_p=0.9,
+        )
+        raw = safe_str(resp.choices[0].message.content if resp and resp.choices else "")
+        data = parse_json_loose(raw)
+
+        # Sadece istenen placeholderları al, str'e çevir
+        for ph in placeholder_list:
+            val = data.get(ph, "")
+            if val is None:
+                val = ""
+            result[ph] = safe_str(str(val)).strip()
+        return result
+    except Exception:
+        # Herhangi bir hata olursa sessizce boş dön (üst akış kullanıcıya uyarı gösterdi)
+        return {}
 
 # ----------------- Kısa ifadeden alan çıkarımı -----------------
 
@@ -938,7 +1014,8 @@ def show_voice_app():
             if special_text_input != st.session_state.get("ek15_short_note", ""):
                 st.session_state["ek15_short_note"] = special_text_input
 
-            col_extract1, col_extract2 = st.columns([1,1])
+            # Mevcut 'Kısa ifadeden alan çıkar' butonu + yeni 'İfade üret' butonu
+            col_extract1, col_extract2, col_gen = st.columns([1,1,2])
             with col_extract1:
                 if st.button("🔎 Kısa ifadeden alan çıkar", use_container_width=True, key="extract_from_short_note"):
                     extracted = extract_from_short_note(st.session_state.get("ek15_short_note", ""))
@@ -951,6 +1028,39 @@ def show_voice_app():
                         st.success(f"Çıkarılan alanlar işlendi: {filled}")
                     else:
                         st.info("Kısa ifadeden çıkarılabilecek belirgin alan bulunamadı.")
+            with col_extract2:
+                # Boş bırakıldı (ileride başka araç eklenebilir)
+                st.write("")
+            with col_gen:
+                if st.button(EK15_GENERATE_BUTTON_LABEL, use_container_width=True, key="ek15_generate_all_from_short_note"):
+                    api_key = (api_key_input or st.session_state.get("api_key", "")).strip()
+                    if not api_key:
+                        st.warning("Önce OpenAI API anahtarını girin.")
+                    else:
+                        qmap = [
+                            ("{iddia_nedir}", "1"),
+                            ("{iddilar_hakkinda_ne_diyorsunuz}", "2"),
+                            ("{konu_hk_eklemek_istediginiz_bir_sey_var_mi}", "3"),
+                            ("{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}", "4"),
+                        ]
+                        made = 0
+                        with st.spinner("Ek-15 ifadeleri üretiliyor..."):
+                            for ph, _ in qmap:
+                                hint_val = st.session_state["ek15_hints"].get(ph, "")
+                                gen = generate_student_style_response(
+                                    api_key=api_key,
+                                    question_key=ph,
+                                    transcript=st.session_state.get("current_transcript", ""),
+                                    mapping=st.session_state.get("current_mapping", {}),
+                                    user_hint=hint_val,
+                                    student_short_note=st.session_state.get("ek15_short_note", ""),
+                                )
+                                if gen:
+                                    st.session_state["current_mapping"][ph] = gen
+                                    sm.update_session_data(st.session_state["current_session_id"], {ph: gen}, merge=True)
+                                    made += 1
+                        st.success(f"✅ {made}/4 cevap üretildi ve kaydedildi.")
+                        st.rerun()
 
     with col_btn:
         if st.button("🧠 Analiz Et", use_container_width=True, type="primary"):
@@ -1033,8 +1143,8 @@ def show_voice_app():
                 sm.update_session_transcript(current_session_id, "")
                 st.rerun()
 
-    # -------------------- EK-15 ÖZEL ÜRETİM ARAYÜZÜ --------------------
-    if st.session_state.get("selected_form_group") == "Ek 15":
+    # -------------------- EK-15 ÖZEL ÜRETİM ARAYÜZÜ (GİZLİ) --------------------
+    if st.session_state.get("selected_form_group") == "Ek 15" and SHOW_DETAILED_EK15_UI:
         st.markdown("---")
         st.subheader("🧠 Ek-15 — Öğrenci Ağzından (RESMÎ DİL) Cevap Üretimi")
 
@@ -1109,10 +1219,10 @@ def show_voice_app():
                             api_key=api_key,
                             question_key=ph,
                             transcript=st.session_state.get("current_transcript", ""),
-                            mapping=st.session_state.get("current_mapping", {}),
-                            user_hint=hint_val,
-                            student_short_note=st.session_state.get("ek15_short_note", ""),
-                        )
+                                                               mapping=st.session_state.get("current_mapping", {}),
+                                    user_hint=hint_val,
+                                    student_short_note=st.session_state.get("ek15_short_note", ""),
+                                )
                         if gen:
                             st.session_state["current_mapping"][ph] = gen
                             sm.update_session_data(st.session_state["current_session_id"], {ph: gen}, merge=True)
@@ -1276,3 +1386,5 @@ def show_voice_app():
 
 if __name__ == "__main__":
     main()
+
+                            
