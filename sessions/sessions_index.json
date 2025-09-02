@@ -2,7 +2,7 @@
   "sess_524dcc5c": {
     "session_name": "351 - Emre Seven",
     "created_date": "2025-08-25T11:25:26.469768",
-    "last_modified": "2025-09-01T23:12:07.062407",
+    "last_modified": "2025-09-02T14:02:29.850007",
     "file_path": "sessions\\sess_524dcc5c.json"
   },
   "sess_810c5438": {
@@ -58,5 +58,17 @@
     "created_date": "2025-09-01T22:17:08.504169",
     "last_modified": "2025-09-01T22:19:27.792921",
     "file_path": "sessions/sess_9540845c.json"
+  },
+  "sess_1dd7511f": {
+    "session_name": "Yeni Session - 20250902_131542",
+    "created_date": "2025-09-02T13:15:42.815740",
+    "last_modified": "2025-09-02T13:19:31.922385",
+    "file_path": "sessions\\sess_1dd7511f.json"
+  },
+  "sess_ae9ffd76": {
+    "session_name": "Yeni Session - 20250902_133346",
+    "created_date": "2025-09-02T13:33:46.884797",
+    "last_modified": "2025-09-02T13:33:46.884797",
+    "file_path": "sessions\\sess_ae9ffd76.json"
   }
 }

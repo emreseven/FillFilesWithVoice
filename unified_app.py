@@ -39,13 +39,62 @@ SPECIAL_FORMS: Dict[str, Dict[str, object]] = {
             "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "Tutanağa dair ekleme/çıkarma isteği; varsa düzeltmeler.",
             "{iddia_nedir}": "Hakkındaki iddianın özeti; kopya iddiasının kısa tanımı.",
         },
-        "custom_instructions": (
-            "Aşağıdaki tek bir uzun metin, öğrencinin kendi ifadeleridir. Bu metni analiz ederek dört soruya bağlama uygun, "
-            "kısa ve net yanıtlar üret. Her placeholder için yalnızca ilgili cevabı ver. Açıkça geçmeyen bilgiyi uydurma; "
-            "emin değilsen boş string bırak. Kişi isimlerini ve gereksiz tekrarları yazma. Yalnızca şu anahtarlar için çıktı ver: "
-            "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}, {iddilar_hakkinda_ne_diyorsunuz}, "
-            "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}, {iddia_nedir}."
-        ),
+        "custom_instructions": """
+ÖZEL TALİMATLAR - EK 15 İFADE ANALİZİ:
+
+Öğrencinin tek parça halindeki ifadesini analiz ederek 4 farklı soruya uygun cevaplar üret. Her cevap aşağıdaki kriterlere uygun olmalı:
+
+GENEL İLKELER:
+- Tüm cevaplar insancıl, doğal ve resmi dilde olacak
+- Robotik, yapay veya şablon cümleler kullanma
+- Öğrencinin kendi ses tonu ve ifade tarzını koru
+- Cevaplar detaylı, tatmin edici ve kapsamlı olacak (minimum 2-3 cümle)
+- Her cevap tam ve eksiksiz bilgi vermeli, yüzeysel kalmamalı
+- Açıkça geçmeyen bilgiyi uydurma; emin değilsen boş string bırak
+- ÖNEMLI: Tüm cevaplar birinci şahıs ("ben", "benim", "yaptım") olarak öğrencinin ağzından yazılacak
+
+ÖZEL DURUMLAR:
+1. SUÇ KABULÜ: Eğer öğrenci ifadesinde suçunu kabul etmiş ise (açık veya örtülü), bu kabul tüm ilgili cevaplara yansıtılacak
+2. PİŞMANLIK: Eğer öğrenci pişmanlık belirtmiş ise, bunu özellikle "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}" alanında vurgula
+
+ALAN BAZLI TALİMATLAR:
+
+{iddia_nedir}: 
+- Öğrenciye yöneltilen asıl iddia/suçlamayı net ve ayrıntılı bir şekilde belirt
+- Objektif ve hukuki dilde, olayın tam kapsamını yansıtacak şekilde yaz
+- İddianın hangi kurallara aykırılık teşkil ettiğini de dahil et
+
+{iddilar_hakkinda_ne_diyorsunuz}:
+- Öğrencinin iddialara karşı tutumunu detaylı şekilde yansıt (kabul/inkâr/kısmi kabul)
+- Suç kabulü varsa bunu açıkça ve net bir dille belirt
+- Öğrencinin verdiği gerekçeleri, açıklamalarını ve savunma noktalarını tam olarak dahil et
+- Öğrencinin olaya bakış açısını ve yorumunu kapsamlı şekilde aktır
+
+{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}:
+- Tutanakla ilgili tüm düzeltme/ekleme isteklerini detaylı şekilde belirt
+- Öğrencinin tutanakta eksik veya yanlış bulduğu kısımları açık şekilde ifade et
+- Yoksa "Tutanakta herhangi bir değişiklik veya düzeltme isteği bulunmamaktadır" şeklinde tam cümle yaz
+
+{konu_hk_eklemek_istediginiz_bir_sey_var_mi}:
+- Ek açıklamalar, pişmanlık ifadeleri, özür beyanlarını detaylı şekilde belirt
+- Öğrencinin vurgulamak istediği diğer noktaları tam olarak aktır
+- Duygusal durumu, tavrını ve gelecek planlarını kapsamlı şekilde yansıt
+- Öğrencinin bu konuda söylemek istediği her şeyi eksiksiz şekilde dahil et
+
+ÖRNEK CEVAP FORMATI:
+
+{iddia_nedir}: "16 Haziran 2025 tarihinde yapılan Matematik II dersi sınavında cep telefonuma baktığım gerekçesiyle hakkımda disiplin soruşturması başlatıldığını biliyorum. Evet, kopya çekmeye teşebbüs ettiğim için buradayım. Hazırlıksızdım ve yapmamam gereken bir şeyi yaptım. Olayın ciddiyetinin farkındayım."
+
+{iddilar_hakkinda_ne_diyorsunuz}: "Sınava hazırlıksız bir şekilde gelmiştim. Derslere devam edemediğim ve sınav konularına yeterince çalışamadığım için ciddi anlamda stres altındaydım. Sınav salonunda en arkaya oturmayı tercih ettim çünkü önde oturup dikkat çekmek istemedim. Sınav kâğıtları dağıtılırken, büyük bir hata yaparak kopya çekmeye teşebbüs ettim. Sınav kağıdının fotoğrafını çektim ve dışarıda bulunan arkadaşım Angel'a gönderdim. Angel üniversitemizde öğrenci değildir. O da bana soruların cevaplarını yolladı. Ancak gözetmenler fark etmedi, cevapları sınav kağıdına geçirme fırsatım olmadı. Gözetmenler durumu fark edip müdahale etti."
+
+{konu_hk_eklemek_istediginiz_bir_sey_var_mi}: "Yaptığım davranışın yanlış ve kabul edilemez olduğunu biliyorum. Bu olaydan dolayı derin pişmanlık duyuyorum. O anki panikle verdiğim bu karar, akademik etik ve sorumluluklarla bağdaşmamaktadır. Bir daha böyle bir davranışı tekrarlamayacağımı belirterek özür dilemek istiyorum."
+
+{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}: "Tutanakta herhangi bir değişiklik veya düzeltme isteği bulunmamaktadır."
+
+Bu format ve ton kullanılarak, öğrencinin gerçek ifadesinden benzer cevaplar üret.
+
+Yalnızca şu anahtarlar için çıktı ver: {konu_hk_eklemek_istediginiz_bir_sey_var_mi}, {iddilar_hakkinda_ne_diyorsunuz}, {tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}, {iddia_nedir}.
+""",
     }
 }
 
