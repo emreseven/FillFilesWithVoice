@@ -42,16 +42,20 @@ SPECIAL_FORMS: Dict[str, Dict[str, object]] = {
         "custom_instructions": """
 ÖZEL TALİMATLAR - EK 15 İFADE ANALİZİ:
 
-Öğrencinin tek parça halindeki ifadesini analiz ederek 4 farklı soruya uygun cevaplar üret. Her cevap aşağıdaki kriterlere uygun olmalı:
+Bu sistem Ek-15 ifade formu için 4 soru alanını öğrencinin ağzından doldurur. Öğrencinin verdiği uzun ifade metnini analiz ederek, sanki öğrenci bu 4 soruya teker teker cevap veriyormuş gibi doldur.
+
+TEMEL GÖREV:
+- Sorular önceden bellidir, sen sadece öğrencinin bu sorulara vereceği CEVAPLARI üret
+- Her cevap öğrencinin ağzından, birinci şahıs olarak yazılacak
+- Öğrencinin ifadesindeki pişmanlık/pişman değil durumunu doğru yansıt
+- Verilen metin hangi senaryoyu içeriyorsa ona uygun cevaplar üret
 
 GENEL İLKELER:
-- Tüm cevaplar insancıl, doğal ve resmi dilde olacak
-- Robotik, yapay veya şablon cümleler kullanma
-- Öğrencinin kendi ses tonu ve ifade tarzını koru
-- Cevaplar detaylı, tatmin edici ve kapsamlı olacak (minimum 2-3 cümle)
-- Her cevap tam ve eksiksiz bilgi vermeli, yüzeysel kalmamalı
-- Açıkça geçmeyen bilgiyi uydurma; emin değilsen boş string bırak
-- ÖNEMLI: Tüm cevaplar birinci şahıs ("ben", "benim", "yaptım") olarak öğrencinin ağzından yazılacak
+- Tüm cevaplar doğal, insancıl ve öğrencinin kendi sesiyle olacak
+- Robotik, yapay ifadeler kullanma
+- Cevaplar ayrıntılı ve kapsamlı olacak (minimum 2-3 cümle)
+- Açıkça geçmeyen bilgiyi uydurma; emin değilsen o alanı boş bırak
+- ÖNEMLI: Sadece CEVAPLAR üret, soruları tekrar yazma
 
 ÖZEL DURUMLAR:
 1. SUÇ KABULÜ: Eğer öğrenci ifadesinde suçunu kabul etmiş ise (açık veya örtülü), bu kabul tüm ilgili cevaplara yansıtılacak
@@ -60,36 +64,38 @@ GENEL İLKELER:
 ALAN BAZLI TALİMATLAR:
 
 {iddia_nedir}: 
-- Öğrenciye yöneltilen asıl iddia/suçlamayı net ve ayrıntılı bir şekilde belirt
-- Objektif ve hukuki dilde, olayın tam kapsamını yansıtacak şekilde yaz
-- İddianın hangi kurallara aykırılık teşkil ettiğini de dahil et
+- Bu alanda öğrencinin "Hakkınızda yöneltilen iddia nedir? Açıklar mısınız?" sorusuna vereceği cevabı yaz
+- Öğrenci ağzından, kendisine yöneltilen iddiayı kabul edip etmediğini açıklayacak
+- Olayın ne olduğunu öğrencinin kendi ifadesiyle anlat
+- Birinci şahıs ("ben", "benim") kullanarak öğrencinin ağzından yaz
 
 {iddilar_hakkinda_ne_diyorsunuz}:
-- Öğrencinin iddialara karşı tutumunu detaylı şekilde yansıt (kabul/inkâr/kısmi kabul)
-- Suç kabulü varsa bunu açıkça ve net bir dille belirt
-- Öğrencinin verdiği gerekçeleri, açıklamalarını ve savunma noktalarını tam olarak dahil et
-- Öğrencinin olaya bakış açısını ve yorumunu kapsamlı şekilde aktır
-
-{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}:
-- Tutanakla ilgili tüm düzeltme/ekleme isteklerini detaylı şekilde belirt
-- Öğrencinin tutanakta eksik veya yanlış bulduğu kısımları açık şekilde ifade et
-- Yoksa "Tutanakta herhangi bir değişiklik veya düzeltme isteği bulunmamaktadır" şeklinde tam cümle yaz
+- Bu alanda öğrencinin "İddia/iddialar hakkında ne diyorsunuz. Ayrıntılı açıklayarak anlatınız?" sorusuna vereceği cevabı yaz
+- Öğrencinin olayı kendi ağzından detaylı şekilde anlatmasını sağla
+- Olay nasıl gelişti, ne yaptı, neden yaptı gibi ayrıntıları dahil et
+- Birinci şahıs anlatımla öğrencinin perspektifini yansıt
 
 {konu_hk_eklemek_istediginiz_bir_sey_var_mi}:
-- Ek açıklamalar, pişmanlık ifadeleri, özür beyanlarını detaylı şekilde belirt
-- Öğrencinin vurgulamak istediği diğer noktaları tam olarak aktır
-- Duygusal durumu, tavrını ve gelecek planlarını kapsamlı şekilde yansıt
-- Öğrencinin bu konuda söylemek istediği her şeyi eksiksiz şekilde dahil et
+- Bu alanda öğrencinin "Konu hakkında eklemek istediğiniz başka bir şey var mı?" sorusuna vereceği cevabı yaz
+- Pişmanlık ifadeleri, özür beyanları, ek açıklamaları öğrencinin ağzından ekle
+- Öğrencinin duygusal durumu ve gelecek planlarını birinci şahıs olarak ifade et
+- Kendisinin söylemek istediği ek noktaları dahil et
 
-ÖRNEK CEVAP FORMATI:
+{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}:
+- Bu alanda öğrencinin "Tutanağı okuyunuz, eklenmesini, düzeltilmesini istediğiniz bir bölüm var mı?" sorusuna vereceği cevabı yaz
+- Öğrencinin ifadesinde tutanakla ilgili açık bir düzeltme/ekleme talebi varsa o talebi birinci şahıs olarak belirt
+- Eğer öğrencinin ifadesinde tutanak hakkında herhangi bir şikayet/düzeltme talebi GEÇMİYORSA, şu tarzda standart cevap ver:
+  "Tutanakta eklenmesini veya çıkarılmasını istediğim bir bölüm bulunmamaktadır" veya
+  "Eklemek veya çıkarmak istediğim bir şey yoktur" veya
+  "Tutanağın bu şekilde kalmasında sakınca görmüyorum"
+- Birinci şahıs ifadeyle ve doğal dilde yaz
 
-{iddia_nedir}: "16 Haziran 2025 tarihinde yapılan Matematik II dersi sınavında cep telefonuma baktığım gerekçesiyle hakkımda disiplin soruşturması başlatıldığını biliyorum. Evet, kopya çekmeye teşebbüs ettiğim için buradayım. Hazırlıksızdım ve yapmamam gereken bir şeyi yaptım. Olayın ciddiyetinin farkındayım."
-
-{iddilar_hakkinda_ne_diyorsunuz}: "Sınava hazırlıksız bir şekilde gelmiştim. Derslere devam edemediğim ve sınav konularına yeterince çalışamadığım için ciddi anlamda stres altındaydım. Sınav salonunda en arkaya oturmayı tercih ettim çünkü önde oturup dikkat çekmek istemedim. Sınav kâğıtları dağıtılırken, büyük bir hata yaparak kopya çekmeye teşebbüs ettim. Sınav kağıdının fotoğrafını çektim ve dışarıda bulunan arkadaşım Angel'a gönderdim. Angel üniversitemizde öğrenci değildir. O da bana soruların cevaplarını yolladı. Ancak gözetmenler fark etmedi, cevapları sınav kağıdına geçirme fırsatım olmadı. Gözetmenler durumu fark edip müdahale etti."
-
-{konu_hk_eklemek_istediginiz_bir_sey_var_mi}: "Yaptığım davranışın yanlış ve kabul edilemez olduğunu biliyorum. Bu olaydan dolayı derin pişmanlık duyuyorum. O anki panikle verdiğim bu karar, akademik etik ve sorumluluklarla bağdaşmamaktadır. Bir daha böyle bir davranışı tekrarlamayacağımı belirterek özür dilemek istiyorum."
-
-{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}: "Tutanakta herhangi bir değişiklik veya düzeltme isteği bulunmamaktadır."
+CEVAP UZUNLUK VE KALİTE KURALLARI:
+- Her cevap minimum 2-3 cümle uzunluğunda olmalı
+- Tek kelime veya kısa cevaplar kabul edilemez
+- Cevaplar ayrıntılı, anlamlı ve kapsamlı olacak
+- Pişmanlık durumunda açık pişmanlık ifadeleri kullanılacak
+- Pişman değilse olay yumuşatılarak ama net şekilde aktarılacak
 
 Bu format ve ton kullanılarak, öğrencinin gerçek ifadesinden benzer cevaplar üret.
 
@@ -717,11 +723,22 @@ def update_session_name_if_needed(session_id, session_data):
             safe_no = (no or "").strip()
             safe_name = " ".join((name or "").split())
             return f"{safe_no} - {safe_name}" if safe_no and safe_name else ""
+        
+        def _is_already_standard_format(name: str) -> bool:
+            """Session adının zaten standart formatta olup olmadığını kontrol et"""
+            # Standart format: "numara - isim" şeklinde
+            import re
+            pattern = r'^\d+\s*-\s*.+$'
+            return bool(re.match(pattern, name.strip()))
 
         student_no, student_name = extract_student_info(session_data)
         current_name = session_data.get('session_name', '')
 
-        # Sadece her ikisi de varsa standart isim uygula
+        # Eğer session adı zaten standart formattaysa güncelleme
+        if _is_already_standard_format(current_name):
+            return False
+
+        # Sadece her ikisi de varsa ve henüz standart format değilse isim uygula
         if student_no and student_name:
             new_name = _format_standard(student_no, student_name)
             if new_name and new_name != current_name:

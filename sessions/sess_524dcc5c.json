@@ -1,6 +1,6 @@
 {
   "session_id": "sess_524dcc5c",
-  "session_name": "351 - Emre Seven",
+  "session_name": "351 - Emre Seven Emre Seven",
   "extracted_data": {
     "{ogrenci_adi_soyadi}": "Emre Seven",
     "{isbu_saat}": "",
@@ -28,16 +28,19 @@
     "{tc_no}": "",
     "{ad_soyad}": "Emre Seven",
     "{ogrenci_baba}": "",
-    "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}": "Yaptığım davranışın yanlış ve kabul edilemez olduğunu biliyorum. Bu olaydan dolayı derin pişmanlık duyuyorum. Bir daha böyle bir davranışı tekrarlamayacağımı belirterek özür dilemek istiyorum.",
-    "{iddia_nedir}": "16 Haziran 2025 tarihinde yapılan Uluslararası Ekonomi dersi sınavında kopya çektiğim gerekçesiyle disiplin soruşturması başlatıldığını biliyorum. Sınav sırasında telefonla soru kağıdının fotoğrafını çekip cevapları dışarıda bulunan birine göndermişim. Bu durum, akademik kurallara aykırılık teşkil etmektedir.",
-    "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "Tutanakta herhangi bir değişiklik veya düzeltme isteği bulunmamaktadır.",
+    "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}": "Yaptığımdan pişman değilim. Hoca'nın davranışları kabul edilemezdi ve ben de buna karşı durdum.",
+    "{iddia_nedir}": "Sınav sırasında hoca tarafından sürekli taciz edildiğim ve aşağılandığım iddiası yöneltiliyor. Hoca, 'Sen bu dersi geçemezsin' gibi sözler söyledi.",
+    "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "",
     "{ogrenci_dg}": "",
-    "{iddilar_hakkinda_ne_diyorsunuz}": "Suçumu kabul ediyorum. Sınavda tedirginlik ve kaygı nedeniyle bu hatayı yaptım. Cevapları gönderen kişi üniversitemizin aktif öğrencisi değil. O anki panikle bu yanlış kararı verdim ve gözetmen tarafından yakalandım.",
+    "{iddilar_hakkinda_ne_diyorsunuz}": "Bu iddiaları kabul etmiyorum. Hoca bana saygısızlık yaptı ve ben de ona haddini bildirdim. Masaya vurarak 'Saygısızlık yapma' dedim ve kendimi savundum.",
     "{fakülte}": "",
-    "{ogrenci_anne}": ""
+    "{ogrenci_anne}": "",
+    "{ogrenci_adi_soyadi }": "Emre Seven",
+    "{soruşturmacı}": "Emre Seven",
+    "{sorusturmaci}": "dr öğretim üyesi Sümeyye hoca"
   },
   "transcript": "Emre Seven isimli öğrenci Perşembe günü saat 13.50'de B blok 13 numaralı lastikte kopya çekerken yakalandı. Öğrencinin numarası 351 Birinci gözetmenin adı Sümeyye, ikinci gözetmenin adı Kemal. Öğrencinin TC'si 120",
   "created_date": "2025-08-25T11:25:26.469768",
-  "last_modified": "2025-09-02T14:02:29.850007",
-  "voice_count": 25
+  "last_modified": "2025-09-03T20:07:11.575502",
+  "voice_count": 35
 }
