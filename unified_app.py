@@ -20,6 +20,8 @@ import dateparser
 
 # Local session management import
 from local_session_manager import get_local_session_manager, merge_extracted_data, detect_conflicts
+# User management import
+from user_manager import get_user_manager
 
 # Özel form davranışları (Ek bazlı özel prompt ve alan kısıtlama)
 # Burada Ek 15 için, uzun metni 4 parçaya ayırma talimatını tanımlayabilirsiniz.
@@ -750,6 +752,378 @@ def update_session_name_if_needed(session_id, session_data):
         st.error(f"Session ismi güncellenirken hata: {e}")
         return False
 
+# ================== Kimlik Doğrulama Sayfaları ==================
+
+def show_login():
+    """Giriş sayfası"""
+    # Başlık - merkezi ve güzel görünüm
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    st.title("🔐 Giriş Yap")
+    st.caption("Sesli Belge Doldurma Sistemine Hoş Geldiniz")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    um = get_user_manager()
+    users = um.get_all_users()
+    
+    if not users:
+        st.warning("Henüz kayıtlı kullanıcı yok. Lütfen önce kayıt olun.")
+        if st.button("📝 Kayıt Ol"):
+            st.session_state["page"] = "register"
+            st.rerun()
+        return
+    
+    # Giriş formu - ortalanmış ve düzenli
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.form("login_form"):
+            st.markdown("### 📋 Giriş Bilgileri")
+            
+            username = st.text_input(
+                "👤 Kullanıcı Adı", 
+                placeholder="Kullanıcı adınızı girin",
+                help="Kayıt olurken belirttiğiniz kullanıcı adı"
+            )
+            
+            password = st.text_input(
+                "🔒 Şifre", 
+                type="password", 
+                placeholder="Şifrenizi girin",
+                help="Hesabınızın şifresi"
+            )
+            
+            st.markdown("")  # Boşluk için
+            
+            submit = st.form_submit_button("🚀 Giriş Yap", type="primary", use_container_width=True)
+            
+            if submit:
+                if not username or not password:
+                    st.error("❌ Lütfen kullanıcı adı ve şifrenizi girin!")
+                else:
+                    user, message = um.authenticate_user(username, password)
+                    if user and message == "success":
+                        # Giriş başarılı
+                        st.session_state["authenticated"] = True
+                        st.session_state["current_user"] = user
+                        st.session_state["user_role"] = user["role"]
+                        st.session_state["page"] = "session_manager"
+                        
+                        # Son giriş zamanını güncelle
+                        um.update_last_login(user["user_id"])
+                        
+                        st.success(f"✅ Hoş geldiniz, {user['display_name']}!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {message}")
+        
+        st.markdown("---")
+        
+        # Kayıt ol butonu
+        if st.button("📝 Henüz hesabınız yok mu? Kayıt olun", use_container_width=True):
+            st.session_state["page"] = "register"
+            st.rerun()
+
+def show_register():
+    """Kayıt sayfası"""
+    # Başlık - merkezi ve güzel görünüm
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    st.title("📝 Kayıt Ol")
+    st.caption("Yeni kullanıcı hesabı oluşturun")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    um = get_user_manager()
+    
+    # Kayıt formu - ortalanmış ve düzenli
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.form("register_form"):
+            st.markdown("### 📋 Kayıt Bilgileri")
+            
+            # Alan alanları alt alta
+            username = st.text_input(
+                "👤 Kullanıcı Adı",
+                placeholder="örn: ahmet_yilmaz",
+                help="Benzersiz bir kullanıcı adı seçin"
+            )
+            
+            email = st.text_input(
+                "📧 E-posta Adresi",
+                placeholder="örn: ahmet@example.com",
+                help="Geçerli bir e-posta adresi girin"
+            )
+            
+            password = st.text_input(
+                "🔒 Şifre",
+                type="password",
+                placeholder="Güvenli bir şifre seçin",
+                help="En az 4 karakter olmalı"
+            )
+            
+            password_confirm = st.text_input(
+                "🔒 Şifre Tekrar",
+                type="password",
+                placeholder="Şifreyi tekrar girin",
+                help="Aynı şifreyi tekrar girin"
+            )
+            
+            role = st.selectbox(
+                "🎭 İstenen Rol",
+                options=["level1", "level2", "admin"],
+                format_func=lambda x: {
+                    "admin": "👑 Yönetici (Tüm formlar + yönetim yetkisi)",
+                    "level1": "📝 Seviye 1 (Sadece Ek 1-2-3 formları)",
+                    "level2": "📄 Seviye 2 (Ek 4, 6, 8, 9, 11, 15 formları)"
+                }[x],
+                help="Admin onayından sonra bu role sahip olacaksınız"
+            )
+            
+            st.markdown("")  # Boşluk için
+            
+            submit = st.form_submit_button("🚀 Kayıt Ol", type="primary", use_container_width=True)
+            
+            if submit:
+                # Validasyon kontrolleri
+                if not username or not email or not password:
+                    st.error("❌ Lütfen tüm alanları doldurun!")
+                elif len(password) < 4:
+                    st.error("❌ Şifre en az 4 karakter olmalı!")
+                elif password != password_confirm:
+                    st.error("❌ Şifreler eşleşmiyor!")
+                elif "@" not in email or "." not in email:
+                    st.error("❌ Geçerli bir e-posta adresi girin!")
+                elif um.get_user_by_username(username):
+                    st.error("❌ Bu kullanıcı adı zaten kullanılıyor!")
+                else:
+                    # Kullanıcıyı kaydet
+                    user = um.register_user(username, email, role, password)
+                    if user:
+                        st.success(f"✅ Kayıt başarılı! {username}")
+                        st.info("⏳ **Hesabınız admin onayı bekliyor.** Admin onayladıktan sonra giriş yapabileceksiniz.")
+                        st.balloons()
+                        
+                        # Session state'e başarılı kayıt durumunu işaretle
+                        st.session_state["registration_success"] = True
+                    else:
+                        st.error("❌ Kayıt sırasında hata oluştu!")
+    
+        # Başarılı kayıt sonrası kontrol (form dışında)
+        if st.session_state.get("registration_success", False):
+            st.markdown("---")
+            if st.button("🔙 Giriş Sayfasına Git", type="primary", use_container_width=True):
+                st.session_state["registration_success"] = False  # Reset flag
+                st.session_state["page"] = "login"
+                st.rerun()
+        else:
+            st.markdown("---")
+            
+            if st.button("🔙 Zaten hesabınız var mı? Giriş yapın", use_container_width=True):
+                st.session_state["page"] = "login"
+                st.rerun()
+            
+            # Güvenlik bilgisi
+            st.info("🔐 **Güvenlik Notu:** Tüm bilgileriniz güvenli olarak şifrelenerek saklanır.")
+
+def show_admin_approvals():
+    """Admin kullanıcı onay sayfası"""
+    current_user = st.session_state.get("current_user")
+    
+    # Admin kontrolü
+    if not current_user or current_user["role"] != "admin":
+        st.error("❌ Bu sayfaya erişim yetkiniz yok!")
+        if st.button("🏠 Ana Sayfaya Dön"):
+            st.session_state["page"] = "session_manager"
+            st.rerun()
+        return
+    
+    # Header
+    col_title, col_back = st.columns([3, 1])
+    with col_title:
+        st.title("👑 Kullanıcı Onay Merkezi")
+        st.caption("Bekleyen kullanıcı kayıtlarını onaylayın veya reddedin")
+    with col_back:
+        if st.button("🏠 Ana Sayfa"):
+            st.session_state["page"] = "session_manager"
+            st.rerun()
+    
+    st.markdown("---")
+    
+    um = get_user_manager()
+    pending_users = um.get_pending_users()
+    all_users = um.get_all_users()
+    approved_users = [u for u in all_users if u.get("status") == "approved"]
+    
+    # İstatistikler
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("⏳ Bekleyen", len(pending_users))
+    with col2:
+        st.metric("✅ Onaylı", len(approved_users))
+    with col3:
+        st.metric("👥 Toplam", len(all_users))
+    
+    st.markdown("---")
+    
+    if not pending_users:
+        st.info("🎉 **Harika!** Şu anda bekleyen kullanıcı onayı yok.")
+    
+    # Onaylı kullanıcıları göster ve yönet
+    if approved_users:
+        st.markdown("---")
+        st.subheader("✅ Kayıtlı Kullanıcılar")
+        
+        for user in approved_users:
+            with st.container():
+                col_info, col_role, col_actions = st.columns([2, 1, 1])
+                
+                with col_info:
+                    role_icon = "👑" if user["role"] == "admin" else "📝" if user["role"] == "level1" else "📄"
+                    role_name = "Yönetici" if user["role"] == "admin" else "Seviye 1" if user["role"] == "level1" else "Seviye 2"
+                    
+                    st.write(f"**{role_icon} {user['display_name']}** ({user['username']})")
+                    st.caption(f"{role_name} • Kayıt: {user['created_at'][:10]}")
+                
+                with col_role:
+                    # Admin kullanıcısının rolü değiştirilemez
+                    if user.get("username") != "admin":
+                        current_role = user["role"]
+                        role_options = ["level1", "level2", "admin"]
+                        role_labels = {
+                            "level1": "📝 Seviye 1",
+                            "level2": "📄 Seviye 2", 
+                            "admin": "👑 Yönetici"
+                        }
+                        
+                        new_role = st.selectbox(
+                            "Rol:",
+                            options=role_options,
+                            index=role_options.index(current_role),
+                            format_func=lambda x: role_labels[x],
+                            key=f"role_{user['user_id']}"
+                        )
+                        
+                        # Rol değiştirme butonu
+                        if new_role != current_role:
+                            if st.button("🔄 Değiştir", key=f"change_role_{user['user_id']}", use_container_width=True):
+                                st.session_state[f"confirm_role_change_{user['user_id']}"] = new_role
+                                st.rerun()
+                        
+                        # Rol değiştirme onayı
+                        if st.session_state.get(f"confirm_role_change_{user['user_id']}"):
+                            new_role_confirm = st.session_state[f"confirm_role_change_{user['user_id']}"]
+                            role_name_new = role_labels[new_role_confirm]
+                            
+                            st.warning(f"⚠️ **{user['display_name']}** kullanıcısının rolünü **{role_name_new}** olarak değiştirmek istediğinizden emin misiniz?")
+                            col_yes, col_no = st.columns(2)
+                            
+                            with col_yes:
+                                if st.button("✅ Evet", key=f"confirm_yes_role_{user['user_id']}"):
+                                    if um.change_user_role(user['user_id'], new_role_confirm, current_user['user_id']):
+                                        st.success(f"🔄 {user['display_name']} rolü güncellendi!")
+                                        del st.session_state[f"confirm_role_change_{user['user_id']}"]
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Rol değiştirme hatası!")
+                            
+                            with col_no:
+                                if st.button("❌ İptal", key=f"confirm_no_role_{user['user_id']}"):
+                                    del st.session_state[f"confirm_role_change_{user['user_id']}"]
+                                    st.rerun()
+                    else:
+                        st.write("🔒 **Korumalı**")
+                        st.caption("Admin rolü")
+                
+                with col_actions:
+                    # Admin kullanıcısını silemez
+                    if user.get("username") != "admin":
+                        if st.button("🗑️", 
+                                   key=f"delete_{user['user_id']}", 
+                                   help="Kullanıcıyı sil",
+                                   use_container_width=True):
+                            # Onay modalı için session state kullan
+                            st.session_state[f"confirm_delete_user_{user['user_id']}"] = True
+                            st.rerun()
+                        
+                        # Silme onayı
+                        if st.session_state.get(f"confirm_delete_user_{user['user_id']}", False):
+                            st.warning(f"⚠️ **{user['display_name']}** kullanıcısını silmek istediğinizden emin misiniz?")
+                            col_yes, col_no = st.columns(2)
+                            
+                            with col_yes:
+                                if st.button("✅ Evet", key=f"confirm_yes_user_{user['user_id']}"):
+                                    if um.delete_user(user['user_id']):
+                                        st.success(f"🗑️ {user['display_name']} silindi!")
+                                        del st.session_state[f"confirm_delete_user_{user['user_id']}"]
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Silme hatası!")
+                            
+                            with col_no:
+                                if st.button("❌ İptal", key=f"confirm_no_user_{user['user_id']}"):
+                                    del st.session_state[f"confirm_delete_user_{user['user_id']}"]
+                                    st.rerun()
+                    else:
+                        st.write("🔒")
+                        st.caption("Korumalı")
+                
+                st.markdown("---")
+    
+    # Bekleyen kullanıcılar bölümü
+    if pending_users:
+        st.subheader(f"⏳ Onay Bekleyen Kullanıcılar ({len(pending_users)})")
+        
+        for i, pending_user in enumerate(pending_users):
+            with st.container():
+                st.markdown(f"### 👤 {pending_user['display_name']}")
+                
+                col_info, col_actions = st.columns([2, 1])
+                
+                with col_info:
+                    role_icon = "👑" if pending_user["role"] == "admin" else "📝" if pending_user["role"] == "level1" else "📄"
+                    role_name = "Yönetici" if pending_user["role"] == "admin" else "Seviye 1" if pending_user["role"] == "level1" else "Seviye 2"
+                    
+                    st.write(f"**👤 Kullanıcı Adı:** {pending_user['username']}")
+                    st.write(f"**📧 E-posta:** {pending_user.get('email', 'Belirtilmemiş')}")
+                    st.write(f"**🎭 İstenen Rol:** {role_icon} {role_name}")
+                    st.write(f"**📅 Kayıt Tarihi:** {pending_user['created_at'][:19].replace('T', ' ')}")
+                    
+                    # Rol açıklaması
+                    if pending_user["role"] == "admin":
+                        st.warning("⚠️ **Dikkat:** Yönetici rolü isteniyor!")
+                    elif pending_user["role"] == "level1":
+                        st.info("📝 Sadece Ek 1-2-3 formlarına erişim")
+                    else:
+                        st.info("📄 Ek 4, 6, 8, 9, 11, 15 formlarına erişim")
+                
+                with col_actions:
+                    st.write("**Karar Verin:**")
+                    
+                    col_approve, col_reject = st.columns(2)
+                    
+                    with col_approve:
+                        if st.button("✅ Onayla", 
+                                   key=f"approve_{pending_user['user_id']}", 
+                                   type="primary",
+                                   use_container_width=True):
+                            if um.approve_user(pending_user['user_id'], current_user['user_id']):
+                                st.success(f"✅ {pending_user['display_name']} onaylandı!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Onay hatası!")
+                    
+                    with col_reject:
+                        if st.button("❌ Reddet", 
+                                   key=f"reject_{pending_user['user_id']}", 
+                                   use_container_width=True):
+                            if um.reject_user(pending_user['user_id'], current_user['user_id']):
+                                st.success(f"🗑️ {pending_user['display_name']} reddedildi ve silindi!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Red hatası!")
+                
+                if i < len(pending_users) - 1:  # Son eleman değilse ayraç ekle
+                    st.markdown("---")
+
 # ================== Ana Uygulama ==================
 
 def main():
@@ -762,9 +1136,18 @@ def main():
         layout="wide"
     )
 
+    # Authentication state initialization
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+    if "current_user" not in st.session_state:
+        st.session_state["current_user"] = None
+    if "user_role" not in st.session_state:
+        st.session_state["user_role"] = None
+    
     # Session state initialization
     if "page" not in st.session_state:
-        st.session_state["page"] = "session_manager"
+        # Start with login page if not authenticated
+        st.session_state["page"] = "login" if not st.session_state["authenticated"] else "session_manager"
     if "current_session_id" not in st.session_state:
         st.session_state["current_session_id"] = None
     if "current_session_name" not in st.session_state:
@@ -781,21 +1164,56 @@ def main():
     if "selected_templates" not in st.session_state:
         st.session_state["selected_templates"] = []
 
+    # İlk admin kullanıcısını oluştur (eğer hiç kullanıcı yoksa) - sessizce
+    um = get_user_manager()
+    um.create_initial_admin_if_needed()
+
     # Page routing
-    if st.session_state["page"] == "session_manager":
-        show_session_manager()
-    elif st.session_state["page"] == "form_selector":
-        show_form_selector()
-    elif st.session_state["page"] == "voice_app":
-        show_voice_app()
+    if not st.session_state["authenticated"]:
+        # Authentication required pages
+        if st.session_state["page"] == "login":
+            show_login()
+        elif st.session_state["page"] == "register":
+            show_register()
+        else:
+            st.session_state["page"] = "login"
+            st.rerun()
     else:
-        st.session_state["page"] = "session_manager"
-        st.rerun()
+        # Authenticated pages
+        if st.session_state["page"] == "session_manager":
+            show_session_manager()
+        elif st.session_state["page"] == "form_selector":
+            show_form_selector()
+        elif st.session_state["page"] == "voice_app":
+            show_voice_app()
+        elif st.session_state["page"] == "admin_approvals":
+            show_admin_approvals()
+        else:
+            st.session_state["page"] = "session_manager"
+            st.rerun()
 
 def show_session_manager():
     """Session yönetim arayüzü"""
-    st.title("🎯 Sesli Belge Doldurma Sistemi")
-    st.caption("Ses girdi ile Word şablonlarını otomatik dolduran akıllı sistem")
+    # Kullanıcı bilgisi ve çıkış butonu
+    current_user = st.session_state.get("current_user")
+    if current_user:
+        col_title, col_user = st.columns([3, 1])
+        with col_title:
+            st.title("🎯 Sesli Belge Doldurma Sistemi")
+            st.caption("Ses girdi ile Word şablonlarını otomatik dolduran akıllı sistem")
+        with col_user:
+            role_icon = "👑" if current_user["role"] == "admin" else "📝" if current_user["role"] == "level1" else "📄"
+            st.write(f"{role_icon} **{current_user['display_name']}**")
+            st.caption(f"Rol: {current_user['role']}")
+            if st.button("🚪 Çıkış Yap"):
+                st.session_state["authenticated"] = False
+                st.session_state["current_user"] = None
+                st.session_state["user_role"] = None
+                st.session_state["page"] = "login"
+                st.rerun()
+    else:
+        st.title("🎯 Sesli Belge Doldurma Sistemi")
+        st.caption("Ses girdi ile Word şablonlarını otomatik dolduran akıllı sistem")
     
     sm = get_local_session_manager()
     
@@ -863,27 +1281,48 @@ def show_session_manager():
                             st.session_state["page"] = "form_selector"
                             st.rerun()
                         
-                        if st.button(f"🗑️ Sil", key=f"delete_{session['session_id']}"):
-                            st.session_state[f"confirm_delete_{session['session_id']}"] = True
-                            st.rerun()
-                        
-                        if st.session_state.get(f"confirm_delete_{session['session_id']}", False):
-                            st.warning("⚠️ Silmek istediğinizden emin misiniz?")
-                            col_yes, col_no = st.columns(2)
+                        # Sadece admin kullanıcılar session silebilir
+                        if current_user and current_user["role"] == "admin":
+                            if st.button(f"🗑️ Sil", key=f"delete_{session['session_id']}"):
+                                st.session_state[f"confirm_delete_{session['session_id']}"] = True
+                                st.rerun()
                             
-                            with col_yes:
-                                if st.button("✅ Evet", key=f"confirm_yes_{session['session_id']}"):
-                                    if sm.delete_session(session['session_id']):
-                                        st.success("Session silindi!")
+                            if st.session_state.get(f"confirm_delete_{session['session_id']}", False):
+                                st.warning("⚠️ Silmek istediğinizden emin misiniz?")
+                                col_yes, col_no = st.columns(2)
+                                
+                                with col_yes:
+                                    if st.button("✅ Evet", key=f"confirm_yes_{session['session_id']}"):
+                                        if sm.delete_session(session['session_id']):
+                                            st.success("Session silindi!")
+                                            del st.session_state[f"confirm_delete_{session['session_id']}"]
+                                            st.rerun()
+                                
+                                with col_no:
+                                    if st.button("❌ İptal", key=f"confirm_no_{session['session_id']}"):
                                         del st.session_state[f"confirm_delete_{session['session_id']}"]
                                         st.rerun()
-                            
-                            with col_no:
-                                if st.button("❌ İptal", key=f"confirm_no_{session['session_id']}"):
-                                    del st.session_state[f"confirm_delete_{session['session_id']}"]
-                                    st.rerun()
     
     with col2:
+        # Admin kullanıcılar için onay paneli
+        if current_user and current_user["role"] == "admin":
+            um = get_user_manager()
+            pending_users = um.get_pending_users()
+            
+            st.subheader("👑 Admin Panel")
+            if pending_users:
+                st.write(f"⏳ **{len(pending_users)} kullanıcı onay bekliyor**")
+                if st.button("🔍 Kullanıcı Onaylarını Yönet", type="primary", use_container_width=True):
+                    st.session_state["page"] = "admin_approvals"
+                    st.rerun()
+            else:
+                st.write("✅ **Bekleyen onay yok**")
+                if st.button("👥 Kullanıcı Yönetimi", use_container_width=True):
+                    st.session_state["page"] = "admin_approvals"
+                    st.rerun()
+            
+            st.markdown("---")
+        
         st.subheader("🚀 Yeni Session")
         st.write("Yeni bir öğrenci için session başlatın.")
         
@@ -892,7 +1331,8 @@ def show_session_manager():
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             session_name = f"Yeni Session - {timestamp}"
             
-            session_id = sm.create_session(session_name)
+            # Kullanıcı bilgilerini session'a ekle
+            session_id = sm.create_session(session_name, current_user)
             if session_id:
                 st.success("Yeni session başlatıldı!")
                 st.session_state["current_session_id"] = session_id
@@ -920,6 +1360,8 @@ def show_form_selector():
     """Form (Ek) seçim ekranı"""
     current_session_id = st.session_state.get("current_session_id")
     current_session_name = st.session_state.get("current_session_name", "Bilinmeyen Session")
+    current_user = st.session_state.get("current_user")
+    
     if not current_session_id:
         st.error("Session bilgisi bulunamadı!")
         if st.button("🏠 Session Yöneticisine Dön"):
@@ -931,9 +1373,26 @@ def show_form_selector():
     st.caption(f"{current_session_name}")
     st.markdown("Seçiminiz bu session için şablonları otomatik işaretler. İstediğiniz zaman değiştirebilirsiniz.")
 
-    options = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8", "Ek 9", "Ek 11", "Ek 15"]
-    default_idx = options.index(st.session_state.get("selected_form_group")) if st.session_state.get("selected_form_group") in options else 0
-    selected = st.radio("Form seti", options=options, index=default_idx, horizontal=True)
+    # Kullanıcı rolüne göre form seçeneklerini filtrele
+    if current_user:
+        um = get_user_manager()
+        permissions = um.get_user_permissions(current_user["role"])
+        available_forms = permissions["available_forms"]
+        
+        # Kullanıcı rolü bilgisini göster
+        role_icon = "👑" if current_user["role"] == "admin" else "📝" if current_user["role"] == "level1" else "📄"
+        st.info(f"{role_icon} **{current_user['display_name']}** - Size açık formlar gösteriliyor")
+    else:
+        # Fallback: Tüm formları göster
+        available_forms = ["Ek 1-2-3", "Ek 4", "Ek 6", "Ek 8", "Ek 9", "Ek 11", "Ek 15"]
+
+    # Seçili form grubunu kontrol et
+    current_selected = st.session_state.get("selected_form_group")
+    default_idx = 0
+    if current_selected and current_selected in available_forms:
+        default_idx = available_forms.index(current_selected)
+    
+    selected = st.radio("Form seti", options=available_forms, index=default_idx, horizontal=True)
 
     col_go, col_back = st.columns([1, 1])
     with col_go:
@@ -953,6 +1412,7 @@ def show_voice_app():
     """Ana ses uygulama arayüzü"""
     current_session_id = st.session_state.get("current_session_id")
     current_session_name = st.session_state.get("current_session_name", "Bilinmeyen Session")
+    current_user = st.session_state.get("current_user")
     
     if not current_session_id:
         st.error("Session bilgisi bulunamadı!")
@@ -980,7 +1440,7 @@ def show_voice_app():
         st.session_state["transcript_loaded_for"] = current_session_id
     
     # Header
-    col_title, col_actions = st.columns([4, 2])
+    col_title, col_actions, col_user = st.columns([3, 1.5, 1.5])
     with col_title:
         st.title(f"🎯 {current_session_name}")
         st.caption(f"Session ID: {current_session_id[:12]}...")
@@ -994,6 +1454,18 @@ def show_voice_app():
         if st.button("🏠 Session listesi"):
             st.session_state["page"] = "session_manager"
             st.rerun()
+    
+    with col_user:
+        if current_user:
+            role_icon = "👑" if current_user["role"] == "admin" else "📝" if current_user["role"] == "level1" else "📄"
+            st.write(f"{role_icon} **{current_user['display_name']}**")
+            st.caption(f"Rol: {current_user['role']}")
+            if st.button("🚪 Çıkış"):
+                st.session_state["authenticated"] = False
+                st.session_state["current_user"] = None
+                st.session_state["user_role"] = None
+                st.session_state["page"] = "login"
+                st.rerun()
     
     st.markdown("---")
     
@@ -1031,16 +1503,22 @@ def show_voice_app():
                     if not group_label:
                         return []
                     prefixes_map = {
-                        "Ek 1-2-3": ["Ek-1", "Ek-2", "Ek-3"],
-                        "Ek 4": ["Ek-4"],
-                        "Ek 6": ["Ek-6"],
-                        "Ek 8": ["Ek-8"],
-                        "Ek 9": ["Ek-9"],
-                        "Ek 11": ["Ek-11"],
-                        "Ek 15": ["Ek-15"],
+                        "Ek 1-2-3": ["Ek-1-", "Ek-2-", "Ek-3-"],
+                        "Ek 4": ["Ek-4 "],
+                        "Ek 6": ["Ek-6 "],
+                        "Ek 8": ["Ek-8 "],
+                        "Ek 9": ["Ek-9 "],
+                        "Ek 11": ["Ek-11 "],
+                        "Ek 15": ["Ek-15 "],
                     }
                     prefixes = prefixes_map.get(group_label, [])
-                    return [f for f in files if any(f.startswith(pfx) for pfx in prefixes)]
+                    matched_files = []
+                    for f in files:
+                        for pfx in prefixes:
+                            if f.startswith(pfx):
+                                matched_files.append(f)
+                                break  # Bir dosya birden fazla prefix'e uymayacak
+                    return matched_files
 
                 should_apply_preselection = (
                     st.session_state.get("templates_initialized_for") != current_session_id or
@@ -1051,14 +1529,16 @@ def show_voice_app():
                     st.session_state["selected_templates"] = preselected
                     st.session_state["templates_initialized_for"] = current_session_id
                     st.session_state["form_group_applied"] = group
+                    st.info(f"🔍 **{group}** için otomatik seçim: {', '.join(preselected) if preselected else 'Hiçbiri'}")
 
                 selected_names = st.multiselect(
                     "Kullanılacak şablonları seçin",
                     options=available,
                     default=st.session_state.get("selected_templates", []),
-                    help="Seçtiğiniz şablonların tam önizlemesi aşağıda görüntülenecek",
-                    key="selected_templates"
+                    help="Seçtiğiniz şablonların tam önizlemesi aşağıda görüntülenecek"
                 )
+                # Manuel olarak session state'i güncelle
+                st.session_state["selected_templates"] = selected_names
             else:
                 st.info("Templates klasöründe .docx şablon bulunamadı.")
         else:
@@ -1067,7 +1547,9 @@ def show_voice_app():
         st.error(f"Templates klasörü okunamadı: {e}")
     
     template_items = []
-    for name in selected_names:
+    # Session state'den güncel seçimi al
+    current_selected = st.session_state.get("selected_templates", [])
+    for name in current_selected:
         try:
             full = os.path.join(default_dir, name)
             with open(full, "rb") as fh:

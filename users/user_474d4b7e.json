@@ -1,0 +1,14 @@
+{
+  "user_id": "474d4b7e",
+  "username": "ecem",
+  "display_name": "ecem",
+  "role": "admin",
+  "password_hash": "23e46d6ff8881db3561b1827cd424488a9d9da9ae890495fe146d7f432bbbfbd",
+  "status": "approved",
+  "created_at": "2025-09-10T13:39:10.405549",
+  "last_login": "2025-09-10T13:39:44.182909",
+  "approved_by": "f1c15a11",
+  "approved_at": "2025-09-10T13:39:35.143768",
+  "role_changed_by": "f1c15a11",
+  "role_changed_at": "2025-09-10T13:56:19.086079"
+}

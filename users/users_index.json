@@ -1,0 +1,31 @@
+{
+  "admin": {
+    "user_id": "f1c15a11",
+    "display_name": "Sistem Yöneticisi",
+    "role": "admin",
+    "status": "approved",
+    "created_at": "2025-09-10T13:38:52.715392"
+  },
+  "ecem": {
+    "user_id": "474d4b7e",
+    "display_name": "ecem",
+    "role": "admin",
+    "status": "approved",
+    "created_at": "2025-09-10T13:39:10.405549"
+  },
+  "emre": {
+    "user_id": "dfc68119",
+    "display_name": "emre",
+    "role": "level2",
+    "status": "rejected",
+    "created_at": "2025-09-10T13:39:55.180488"
+  },
+  "sevim": {
+    "user_id": "14984a49",
+    "display_name": "sevim",
+    "email": "sevim@gmail.com",
+    "role": "level1",
+    "status": "approved",
+    "created_at": "2025-09-10T14:02:03.060595"
+  }
+}

@@ -45,7 +45,7 @@ class LocalSessionManager:
         """Session dosya yolunu al"""
         return os.path.join(self.sessions_dir, f"{session_id}.json")
     
-    def create_session(self, session_name: str) -> str:
+    def create_session(self, session_name: str, user_info: Optional[Dict] = None) -> str:
         """Yeni session oluştur"""
         try:
             session_id = f"sess_{uuid.uuid4().hex[:8]}"
@@ -61,6 +61,14 @@ class LocalSessionManager:
                 "last_modified": now,
                 "voice_count": 0
             }
+            
+            # Kullanıcı bilgilerini ekle
+            if user_info:
+                session_data.update({
+                    "created_by": user_info.get("user_id"),
+                    "creator_name": user_info.get("display_name"),
+                    "creator_role": user_info.get("role")
+                })
             
             # Session dosyasını kaydet
             session_file = self._get_session_file_path(session_id)
