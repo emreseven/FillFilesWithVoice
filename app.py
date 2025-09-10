@@ -928,9 +928,10 @@ def show_admin_approvals():
     """Admin kullanıcı onay sayfası"""
     current_user = st.session_state.get("current_user")
     
-    # Admin kontrolü
-    if not current_user or current_user["role"] != "admin":
+    # Sadece "admin" kullanıcısı kontrolü
+    if not current_user or current_user.get("username") != "admin":
         st.error("❌ Bu sayfaya erişim yetkiniz yok!")
+        st.warning("🔒 Bu sayfa sadece sistem yöneticisi için erişilebilirdir.")
         if st.button("🏠 Ana Sayfaya Dön"):
             st.session_state["page"] = "session_manager"
             st.rerun()
@@ -1281,8 +1282,8 @@ def show_session_manager():
                             st.session_state["page"] = "form_selector"
                             st.rerun()
                         
-                        # Sadece admin kullanıcılar session silebilir
-                        if current_user and current_user["role"] == "admin":
+                        # Sadece "admin" kullanıcısı session silebilir
+                        if current_user and current_user.get("username") == "admin":
                             if st.button(f"🗑️ Sil", key=f"delete_{session['session_id']}"):
                                 st.session_state[f"confirm_delete_{session['session_id']}"] = True
                                 st.rerun()
@@ -1304,8 +1305,8 @@ def show_session_manager():
                                         st.rerun()
     
     with col2:
-        # Admin kullanıcılar için onay paneli
-        if current_user and current_user["role"] == "admin":
+        # Sadece "admin" kullanıcısı için onay paneli
+        if current_user and current_user.get("username") == "admin":
             um = get_user_manager()
             pending_users = um.get_pending_users()
             
