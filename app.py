@@ -1,4 +1,4 @@
-# unified_app.py - Sesli Belge Doldurma Sistemi (Birleşik Versiyon)
+# app.py - Sesli Belge Doldurma Sistemi
 # Voice.py ve app2.py projelerinin en iyi özelliklerini birleştiren gelişmiş sistem
 
 import io

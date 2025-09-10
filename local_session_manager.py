@@ -252,7 +252,7 @@ class LocalSessionManager:
             return False
     
     def save_session(self, session_id: str, session_data: Dict[str, Any]) -> bool:
-        """Session verisini kaydet (unified_app.py uyumluluğu için)"""
+        """Session verisini kaydet (app.py uyumluluğu için)"""
         try:
             session_data['last_modified'] = datetime.now().isoformat()
             
@@ -275,7 +275,7 @@ class LocalSessionManager:
             return False
     
     def update_session_name(self, session_id: str, new_name: str) -> bool:
-        """Session ismini güncelle (unified_app.py uyumluluğu için)"""
+        """Session ismini güncelle (app.py uyumluluğu için)"""
         return self.rename_session(session_id, new_name)
     
     def export_session(self, session_id: str) -> Optional[Dict[str, Any]]:
