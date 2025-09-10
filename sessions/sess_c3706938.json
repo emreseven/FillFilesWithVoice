@@ -16,7 +16,7 @@
     "{sinav_gun}": "21",
     "{sinav_ay}": "08",
     "{isbu_yil}": "2024",
-    "{bolum}": "Yönetim Bilim Sistemleri",
+    "{bolum}": "Yönetim Bilimleri",
     "{bolum_baskanligi}": "Yönetim Bilimleri",
     "{aciklama}": "kopya çekme girişiminde bulunmuş",
     "{hafta_gunu}": "Salı",
@@ -27,13 +27,14 @@
     "{ogrenci_anne}": "",
     "{ogrenci_baba}": "",
     "{ogrenci_dg}": "",
-    "{iddia_nedir}": "Hakkımda yöneltilen iddia, 21 Ağustos 2024 tarihinde gerçekleştirilen işletme dersi sınavında, başka bir öğrencinin kağıdına bakarak kopya çekmeye çalıştığımdır. Sınav süresi 13.30 ile 13.50 arasında olup, benim yakalanma anım 13.42'dir. Bu durumu değerlendirirken, o anki sınav kaygısı ve derse hazırlık sürecimde yaşadığım zorluklar nedeniyle böyle bir hataya düştüğümü belirtmek isterim. Söz konusu eylemin, niyetim olmaksızın geliştiğini ve akademik kurallara aykırı bir davranış sergilediğimin farkındayım. Bu süreçte yaşananlardan dolayı üzüntü duyduğumu ifade etmek istiyorum.",
-    "{iddilar_hakkinda_ne_diyorsunuz}": "21 Ağustos 2024 tarihinde gerçekleştirilen işletme dersi sınavında, tarafıma yöneltilen iddialar hakkında açıklama yapmak istiyorum. Sınav sırasında, başka bir öğrencinin kağıdına bakarak kopya çekmeye çalıştığım belirtilmiştir. Sınav saatleri 13.30 ile 13.50 arasındayken, bu eylemimin 13.42'de gerçekleştiği ifade edilmektedir. Bu süreçte, kopya çekme girişimimde bulunduğum doğrudur; ancak bunu yaparken amacım, sınavın zorluğuyla ilgili kaygılarımı aşmak ve dersin içeriğini daha iyi anlamak için bir destek arayışında olduğumu belirtmek isterim. Kopya çekme eyleminin ne denli yanlış olduğunu biliyorum ve bu durumdan dolayı derin bir pişmanlık duyuyorum. Eğitim hayatımdaki bu hatanın sonuçlarıyla yüzleşmeye hazırım ve gelecekte benzer bir duruma düşmemek için gerekli önlemleri alacağım. Üniversitemin disiplin kurallarına ve akademik ahlaka olan saygım her zaman ön planda olmuştur; dolayısıyla bu olayı benim için ders niteliğinde bir deneyim olarak görmekteyim.",
-    "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}": "Sınav sürecinde gerçekleştirdiğim davranış için derin bir pişmanlık duyduğumu belirtmek isterim. 21 Ağustos 2024 tarihinde gerçekleştirilen işletme dersi sınavında, başka bir öğrencinin kağıdına bakarak kopya çekmeye çalıştım. Bu davranışımın, akademik etik ve disiplin kurallarına aykırı olduğunu biliyorum. 13.42'de bu eylemim sırasında yakalandım ve bu durumun sonuçlarını kabul ediyorum. Gelecekte benzer hatalar yapmamak adına gerekli önlemleri alacağıma dair taahhütte bulunuyorum. Üniversitemin kurallarına uygun bir öğrenci olma hedefim doğrultusunda bu durumdan ders çıkarmak için çaba göstereceğim.",
-    "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "21 Ağustos 2024 tarihinde, saat 13.42'de gerçekleştirilen işletme dersi sınavında kopya çekme girişiminde bulunduğum tespit edilmiştir. Sınav süresi 13.30-13.50 arasında olup, bu süre zarfında başka bir öğrencinin kağıdına bakmaya çalıştığım kaydedilmiştir. Bu olay nedeniyle disiplin sürecinin başlatıldığını belirtmek isterim. Tutanağın okunduğunu ve eklenmesini ya da düzeltilmesini istediğim herhangi bir durumun bulunmadığını ifade ederim. Saygılarımla, Nuri Güner, öğrenci numarası: 832."
+    "{iddia_nedir}": "Hakkımda kopya çektiğim iddiası var. Bu durumu kabul etmiyorum, çünkü ben sınavda kendi bilgimle başarılı olmak için çalıştım.",
+    "{iddilar_hakkinda_ne_diyorsunuz}": "İddialar hakkında söylemek istediğim, sınav sırasında dikkatimi dağıtan bazı durumlar oldu. Ancak bu, kopya çektiğim anlamına gelmez. Benim amacım her zaman kendi bilgimle başarılı olmaktı.",
+    "{konu_hk_eklemek_istediginiz_bir_sey_var_mi}": "Bu durumdan dolayı gerçekten pişmanım. Sınavda yaşananlar beni çok üzüyor ve gelecekte daha dikkatli olacağıma söz veriyorum.",
+    "{tutanagi_okuyun_eklemek_cikarmak_istediginiz_yer_var_mi}": "Tutanağın bu şekilde kalmasında sakınca görmüyorum.",
+    "{sorusturmaci}": ""
   },
   "transcript": "Nuri Güner isimli öğrenci işletme dersi sınavında kopya çekmiştir. Öğrencinin bölümü yönetim bilim sistemleri 3. sınıf öğrencisidir. Öğrencinin numarası 832. Öğrencinin kimlik numarası 72. Öğrenci başka bir öğrencinin kağıdına bakmaya çalışarak kopya girişiminde bulunmuştur. Sınav tarihi 21 Ağustos 2024'tür. Sınav saatleri 13.30-13.50 arasındadır ve öğrencinin yakalandığı saat 13.42'dir. Sınav tarihi 21 Ağustos 2024'tür. Sınav saatleri 13.30-13.50 arasındadır ve öğrencinin yakalandığı saat 13.42'dir.",
   "created_date": "2025-09-02T14:06:38.973142",
-  "last_modified": "2025-09-03T03:03:48.316700",
-  "voice_count": 28
+  "last_modified": "2025-09-07T19:41:51.576011",
+  "voice_count": 33
 }
