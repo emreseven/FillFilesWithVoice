@@ -22,6 +22,8 @@ import dateparser
 from local_session_manager import get_local_session_manager, merge_extracted_data, detect_conflicts
 # User management import
 from user_manager import get_user_manager
+# Feedback management import
+from feedback_manager import get_feedback_manager
 
 # Özel form davranışları (Ek bazlı özel prompt ve alan kısıtlama)
 # Burada Ek 15 için, uzun metni 4 parçaya ayırma talimatını tanımlayabilirsiniz.
@@ -393,9 +395,88 @@ def today_isbu(dt: datetime = None) -> Dict[str, str]:
         "isbu_saat": now.strftime("%H:%M")
     }
 
+# ================== Etiket Biçimlendirme (Kullanıcı Dostu) ==================
+
+def _turkish_capitalize(word: str) -> str:
+    """Türkçeye uygun büyük harfe çevirme (i→İ, ı→I)."""
+    if not word:
+        return ""
+    first = word[0]
+    rest = word[1:]
+    if first == "i":
+        first_u = "İ"
+    elif first == "ı":
+        first_u = "I"
+    else:
+        first_u = first.upper()
+    return first_u + rest
+
+def format_placeholder_label(placeholder: str) -> str:
+    """{ogrenci_adi} → Öğrenci Adı gibi kullanıcı dostu etiket üretir."""
+    try:
+        key = str(placeholder or "")
+        if key.startswith("{") and key.endswith("}"):
+            key = key[1:-1]
+        key = key.replace("-", " ").replace("_", " ")
+        key = re.sub(r"\s+", " ", key).strip()
+
+        special_map = {
+            "tc": "T.C.",
+            "t.c": "T.C.",
+            "ogr": "Öğr.",
+            "ogrenci": "Öğrenci",
+            "öğrenci": "Öğrenci",
+            "ad": "Ad",
+            "adi": "Adı",
+            "soyad": "Soyad",
+            "soyadi": "Soyadı",
+            "adsoyad": "Ad Soyad",
+            "adi soyadi": "Adı Soyadı",
+            "bolum": "Bölüm",
+            "bölüm": "Bölüm",
+            "no": "No",
+            "numara": "Numarası",
+            "kimlik": "Kimlik",
+            "sinav": "Sınav",
+            "sınav": "Sınav",
+            "tarih": "Tarih",
+            "saat": "Saat",
+            "blok": "Blok",
+            "ders": "Ders",
+            "gozetmen": "Gözetmen",
+            "gözetmen": "Gözetmen",
+            "imza": "İmza",
+            "yer": "Yer",
+            "salon": "Salon",
+            "derslik": "Derslik",
+            "fakulte": "Fakülte",
+            "fakülte": "Fakülte",
+            "unvan": "Unvan",
+            "unvani": "Unvanı",
+            "aciklama": "Açıklama",
+            "açıklama": "Açıklama",
+        }
+
+        words = [w for w in key.split(" ") if w]
+        pretty_words = []
+        for w in words:
+            lw = w.lower()
+            if lw in special_map:
+                pretty_words.append(special_map[lw])
+            elif len(w) <= 2 and w.isalpha():
+                pretty_words.append(w.upper())
+            else:
+                pretty_words.append(_turkish_capitalize(w))
+
+        label = " ".join(pretty_words)
+        label = label.replace("Ogrenci", "Öğrenci").replace("Ogrencinin", "Öğrencinin")
+        return label
+    except Exception:
+        return str(placeholder).strip("{}")
+
 # ================== AI Analiz Fonksiyonları ==================
 
-def extract_placeholder_contexts_from_docx_bytes(file_bytes: bytes, placeholders: Set[str], window: int = 70) -> Dict[str, List[str]]:
+def extract_placeholder_contexts_from_docx_bytes(file_bytes: bytes, placeholders: Set[str], window: int = 120) -> Dict[str, List[str]]:
     """Placeholder'ların bağlamlarını çıkar"""
     doc = Document(io.BytesIO(file_bytes))
     blocks = []
@@ -565,6 +646,8 @@ EK ÖZEL KURALLAR:
 - Öğrencinin adı ve soyadını açıklama alanlarına ekleme
 - Sadece ne olduğunu objektif şekilde açıkla
  - Verilmeyen bilgileri uydurma; emin değilsen boş string ver
+ - ÖNEMLİ: Eğer bir alan "açıklama" niteliğindeyse (anahtar isminde "aciklama"/"açıklama" geçiyorsa), ürettiğin cümleyi şablondaki bu placeholder'ın ÖNÜNDE ve ARDINDA geçen kelime/ifadelere dilbilgisel olarak UYDUR. Örn: "... hakkında {aciklama}" kalıbında "... hakkında"dan sonra doğal akışla devam edecek bir ifade kur.
+ - "Açıklama" üretirken, bağlam parçalarında (context) placeholder'ı çevreleyen 1-2 kelimeye özellikle dikkat et; gerektiğinde giriş/bağlaç ekleyerek (ör. "hakkında", "ile ilgili", "bu kapsamda", "bu doğrultuda") akıcı hale getir.
 
 JSON formatı örneği:
 """ + "{" + ", ".join([f'"{ph}": "değer_veya_boş_string"' for ph in ph_list[:3]]) + "...}"
@@ -1189,6 +1272,8 @@ def main():
             show_voice_app()
         elif st.session_state["page"] == "admin_approvals":
             show_admin_approvals()
+        elif st.session_state["page"] == "feedback_panel":
+            show_feedback_panel()
         else:
             st.session_state["page"] = "session_manager"
             st.rerun()
@@ -1217,6 +1302,7 @@ def show_session_manager():
         st.caption("Ses girdi ile Word şablonlarını otomatik dolduran akıllı sistem")
     
     sm = get_local_session_manager()
+    fbm = get_feedback_manager()
     
     # Arama çubuğu (yalnızca öğrenci adı veya numarasına göre)
     search_term = st.text_input("🔍 Öğrenci Ara", placeholder="Öğrenci adı veya öğrenci numarası...")
@@ -1305,10 +1391,11 @@ def show_session_manager():
                                         st.rerun()
     
     with col2:
-        # Sadece "admin" kullanıcısı için onay paneli
+        # Sadece "admin" kullanıcısı için paneller
         if current_user and current_user.get("username") == "admin":
             um = get_user_manager()
             pending_users = um.get_pending_users()
+            pending_feedbacks = get_feedback_manager().get_pending_count()
             
             st.subheader("👑 Admin Panel")
             if pending_users:
@@ -1323,6 +1410,24 @@ def show_session_manager():
                     st.rerun()
             
             st.markdown("---")
+            st.write(f"💬 Bekleyen geri bildirim: **{pending_feedbacks}**")
+            if st.button("💬 Geri Bildirim Paneli", use_container_width=True):
+                st.session_state["page"] = "feedback_panel"
+                st.rerun()
+        
+        # Geri Bildirim (Yeni Session bölümü gibi sağ sütunda)
+        st.subheader("💬 Geri Bildirim")
+        st.write("Hata, istek veya önerinizi iletin.")
+        feedback_text_right = st.text_area("Mesajınız", key="feedback_text_main", placeholder="Örn: Ek 6 şablonunda bir alan çalışmıyor...", height=120)
+        if st.button("📨 Gönder", key="send_feedback_main", use_container_width=True):
+            if not feedback_text_right or not feedback_text_right.strip():
+                st.warning("Lütfen bir mesaj yazın.")
+            else:
+                fb_id = fbm.submit_feedback(current_user or {}, feedback_text_right)
+                if fb_id:
+                    st.success("Teşekkürler! Geri bildiriminiz admin'e iletildi.")
+                else:
+                    st.error("Geri bildirim kaydedilemedi.")
         
         st.subheader("🚀 Yeni Session")
         st.write("Yeni bir öğrenci için session başlatın.")
@@ -1357,6 +1462,73 @@ def show_session_manager():
         
         st.info("💡 **İpucu:** Session başlattıktan sonra öğrenci bilgilerini sesli girdi ile kaydedin.")
 
+def show_feedback_panel():
+    """Admin geri bildirim yönetim sayfası"""
+    current_user = st.session_state.get("current_user")
+    if not current_user or current_user.get("username") != "admin":
+        st.error("❌ Bu sayfaya erişim yetkiniz yok!")
+        if st.button("🏠 Ana Sayfaya Dön"):
+            st.session_state["page"] = "session_manager"
+            st.rerun()
+        return
+
+    fbm = get_feedback_manager()
+    feedbacks = fbm.get_all_feedbacks()
+
+    col_title, col_back = st.columns([3, 1])
+    with col_title:
+        st.title("💬 Geri Bildirim Paneli")
+        st.caption("Kullanıcı geri bildirimlerini inceleyin ve durum atayın")
+    with col_back:
+        if st.button("🏠 Ana Sayfa"):
+            st.session_state["page"] = "session_manager"
+            st.rerun()
+
+    st.markdown("---")
+
+    if not feedbacks:
+        st.info("Şu anda geri bildirim yok.")
+        return
+
+    status_labels = {
+        "pending": "⏳ Beklemede",
+        "in_progress": "🔧 İşlemde",
+        "resolved": "✅ Çözüldü",
+    }
+
+    for fb in feedbacks:
+        with st.container():
+            col_info, col_actions = st.columns([3, 1])
+            with col_info:
+                st.write(f"**📅 {fb.get('created_at','')[:19].replace('T',' ')}** • {status_labels.get(fb.get('status'), fb.get('status'))}")
+                user = fb.get("submitted_by", {}) or {}
+                st.write(f"Gönderen: {user.get('display_name') or user.get('username') or 'Bilinmiyor'} ({user.get('role') or '-'})")
+                st.write(f"Mesaj:")
+                st.code(fb.get("message", ""))
+
+            with col_actions:
+                new_status = st.selectbox(
+                    "Durum",
+                    options=["pending", "in_progress", "resolved"],
+                    index=["pending", "in_progress", "resolved"].index(fb.get("status", "pending")),
+                    format_func=lambda x: status_labels.get(x, x),
+                    key=f"fb_status_{fb['feedback_id']}"
+                )
+                if st.button("💾 Kaydet", key=f"fb_save_{fb['feedback_id']}", use_container_width=True):
+                    if fbm.set_status(fb['feedback_id'], new_status):
+                        st.success("Durum güncellendi")
+                        st.rerun()
+                    else:
+                        st.error("Güncelleme hatası")
+                if st.button("🗑️ Sil", key=f"fb_delete_{fb['feedback_id']}", use_container_width=True):
+                    if fbm.delete_feedback(fb['feedback_id']):
+                        st.success("Geri bildirim silindi")
+                        st.rerun()
+                    else:
+                        st.error("Silme hatası")
+
+            st.markdown("---")
+
 def show_form_selector():
     """Form (Ek) seçim ekranı"""
     current_session_id = st.session_state.get("current_session_id")
@@ -1372,7 +1544,6 @@ def show_form_selector():
 
     st.title("🧩 Hangi Ek doldurulacak?")
     st.caption(f"{current_session_name}")
-    st.markdown("Seçiminiz bu session için şablonları otomatik işaretler. İstediğiniz zaman değiştirebilirsiniz.")
 
     # Kullanıcı rolüne göre form seçeneklerini filtrele
     if current_user:
@@ -1445,8 +1616,7 @@ def show_voice_app():
     with col_title:
         st.title(f"🎯 {current_session_name}")
         st.caption(f"Session ID: {current_session_id[:12]}...")
-        active_group = st.session_state.get("selected_form_group") or "Seçilmedi"
-        st.info(f"Aktif Form Seti: {active_group}")
+        # Aktif form seti bilgisini kullanıcıya göstermeyelim
     
     with col_actions:
         if st.button("🧩 Form setini değiştir"):
@@ -1487,8 +1657,7 @@ def show_voice_app():
     
     st.markdown("---")
     
-    # Şablon seçimi
-    st.subheader("📝 Şablon Belgeleri")
+    # Şablon seçimi (arka planda otomatik)
     
     default_dir = os.path.join(os.getcwd(), "templates")
     selected_names = []
@@ -1530,20 +1699,12 @@ def show_voice_app():
                     st.session_state["selected_templates"] = preselected
                     st.session_state["templates_initialized_for"] = current_session_id
                     st.session_state["form_group_applied"] = group
-                    st.info(f"🔍 **{group}** için otomatik seçim: {', '.join(preselected) if preselected else 'Hiçbiri'}")
-
-                selected_names = st.multiselect(
-                    "Kullanılacak şablonları seçin",
-                    options=available,
-                    default=st.session_state.get("selected_templates", []),
-                    help="Seçtiğiniz şablonların tam önizlemesi aşağıda görüntülenecek"
-                )
-                # Manuel olarak session state'i güncelle
-                st.session_state["selected_templates"] = selected_names
             else:
-                st.info("Templates klasöründe .docx şablon bulunamadı.")
+                # Klasörde .docx bulunmuyorsa sessiz geç; analiz adımında uyarılacak
+                pass
         else:
-            st.info("Templates klasörü bulunamadı.")
+            # Templates klasörü yoksa sessiz geç; analiz adımında uyarılacak
+            pass
     except Exception as e:
         st.error(f"Templates klasörü okunamadı: {e}")
     
@@ -1698,10 +1859,23 @@ def show_voice_app():
         with col_clear:
             st.write("")
             if st.button("🗑️ Temizle"):
-                st.session_state["current_transcript"] = ""
-                # Session'dan da transcript'i temizle
-                sm.update_session_transcript(current_session_id, "")
+                st.session_state["confirm_clear_transcript"] = True
                 st.rerun()
+
+        # Temizleme onayı
+        if st.session_state.get("confirm_clear_transcript", False):
+            st.warning("⚠️ Birleşik transkripti silmek istediğinizden emin misiniz?")
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("✅ Evet", key="confirm_yes_clear_transcript"):
+                    st.session_state["current_transcript"] = ""
+                    sm.update_session_transcript(current_session_id, "")
+                    st.session_state.pop("confirm_clear_transcript", None)
+                    st.rerun()
+            with col_no:
+                if st.button("❌ İptal", key="confirm_no_clear_transcript"):
+                    st.session_state.pop("confirm_clear_transcript", None)
+                    st.rerun()
     
     # Placeholder değerleri
     if union_placeholders:
@@ -1736,7 +1910,7 @@ def show_voice_app():
         edit_cols = st.columns(2)
         for idx, ph in enumerate(sorted(list(union_placeholders))):
             with edit_cols[idx % 2]:
-                display_name = ph.replace("{", "").replace("}", "")
+                display_name = format_placeholder_label(ph)
                 st.markdown(f"**{display_name}**")
                 
                 cur_val = st.session_state.get("current_mapping", {}).get(ph, "")
