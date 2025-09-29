@@ -52,7 +52,7 @@ class UserManager:
         """Kullanıcı dosya yolunu al"""
         return os.path.join(self.users_dir, f"user_{user_id}.json")
     
-    def register_user(self, username: str, email: str, role: str, password: str) -> Optional[Dict]:
+    def register_user(self, username: str, email: str, role: str, password: str, security_question: str = None, security_answer: str = None) -> Optional[Dict]:
         """Yeni kullanıcı kaydet"""
         # Kullanıcı adı kontrolü
         if self.get_user_by_username(username):
@@ -73,6 +73,11 @@ class UserManager:
             "approved_by": None,
             "approved_at": None
         }
+        
+        # Güvenlik sorusu ve cevabını ekle
+        if security_question and security_answer:
+            user_data["security_question"] = security_question
+            user_data["security_answer"] = security_answer.lower().strip()
         
         # Kullanıcı dosyasını kaydet
         user_file = self._get_user_file_path(user_id)
@@ -295,6 +300,51 @@ class UserManager:
             self._save_users_index(users_index)
         
         return True
+    
+    def get_security_question(self, username: str) -> Optional[str]:
+        """Kullanıcının güvenlik sorusunu al"""
+        try:
+            user = self.get_user_by_username(username)
+            if user and 'security_question' in user:
+                return user['security_question']
+            return None
+        except Exception as e:
+            print(f"Error getting security question: {e}")
+            return None
+
+    def verify_security_answer(self, username: str, answer: str) -> bool:
+        """Güvenlik sorusu cevabını doğrula"""
+        try:
+            user = self.get_user_by_username(username)
+            if user and 'security_answer' in user:
+                # Büyük/küçük harf duyarsız karşılaştırma
+                stored_answer = user['security_answer'].lower().strip()
+                provided_answer = answer.lower().strip()
+                return stored_answer == provided_answer
+            return False
+        except Exception as e:
+            print(f"Error verifying security answer: {e}")
+            return False
+
+    def reset_password(self, username: str, new_password: str) -> tuple[bool, str]:
+        """Güvenlik sorusu doğrulandıktan sonra şifreyi sıfırla"""
+        try:
+            user = self.get_user_by_username(username)
+            if not user:
+                return False, "Kullanıcı bulunamadı!"
+            
+            # Şifreyi güncelle
+            user['password_hash'] = self._hash_password(new_password)
+            
+            # Kullanıcı dosyasını güncelle
+            user_file = self._get_user_file_path(user['user_id'])
+            with open(user_file, 'w', encoding='utf-8') as f:
+                json.dump(user, f, ensure_ascii=False, indent=2)
+            
+            return True, "Şifre başarıyla sıfırlandı!"
+        
+        except Exception as e:
+            return False, f"Şifre sıfırlanırken hata: {str(e)}"
     
     def create_initial_admin_if_needed(self) -> bool:
         """Eğer hiç kullanıcı yoksa ilk admin kullanıcısını oluştur"""

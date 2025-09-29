@@ -1,0 +1,13 @@
+{
+  "feedback_id": "2e856da3381b",
+  "created_at": "2025-09-12T17:37:28.304796",
+  "status": "resolved",
+  "message": "sesli söylediğim şeyleri yanlış anlıyor",
+  "submitted_by": {
+    "user_id": "f1c15a11",
+    "username": "admin",
+    "display_name": "Sistem Yöneticisi",
+    "role": "admin"
+  },
+  "assigned_to": "admin"
+}

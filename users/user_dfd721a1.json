@@ -1,0 +1,15 @@
+{
+  "user_id": "dfd721a1",
+  "username": "simge",
+  "email": "simge@gmail.com",
+  "display_name": "simge",
+  "role": "level1",
+  "password_hash": "af15619a69e0dc30eb22e152c9674f8653974449103f250852bb37694f5a1b10",
+  "status": "approved",
+  "created_at": "2025-09-29T14:50:34.142562",
+  "last_login": "2025-09-29T14:51:37.190212",
+  "approved_by": "f1c15a11",
+  "approved_at": "2025-09-29T14:50:54.923618",
+  "security_question": "İlk evcil hayvanınızın adı neydi?",
+  "security_answer": "köfte"
+}

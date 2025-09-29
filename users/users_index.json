@@ -19,5 +19,13 @@
     "role": "level2",
     "status": "rejected",
     "created_at": "2025-09-10T13:39:55.180488"
+  },
+  "simge": {
+    "user_id": "dfd721a1",
+    "display_name": "simge",
+    "email": "simge@gmail.com",
+    "role": "level1",
+    "status": "approved",
+    "created_at": "2025-09-29T14:50:34.142562"
   }
 }

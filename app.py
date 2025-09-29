@@ -877,7 +877,13 @@ def show_login():
             
             st.markdown("")  # Boşluk için
             
-            submit = st.form_submit_button("🚀 Giriş Yap", type="primary", use_container_width=True)
+            col_login, col_forgot = st.columns([2, 1])
+            
+            with col_login:
+                submit = st.form_submit_button("🚀 Giriş Yap", type="primary", use_container_width=True)
+            
+            with col_forgot:
+                forgot_button = st.form_submit_button("🔑 Şifremi Unuttum", use_container_width=True)
             
             if submit:
                 if not username or not password:
@@ -898,6 +904,10 @@ def show_login():
                         st.rerun()
                     else:
                         st.error(f"❌ {message}")
+            
+            if forgot_button:
+                st.session_state["page"] = "forgot_password"
+                st.rerun()
         
         st.markdown("---")
         
@@ -961,6 +971,24 @@ def show_register():
                 help="Admin onayından sonra bu role sahip olacaksınız"
             )
             
+            st.markdown("---")
+            st.markdown("### 🔐 Güvenlik Sorusu (Şifre sıfırlama için)")
+            
+            # Önceden tanımlanmış güvenlik soruları
+            security_questions = [
+                "İlk evcil hayvanınızın adı neydi?",
+                "Doğduğunuz şehir neresidir?",
+                "En sevdiğiniz yemeğin adı nedir?",
+                "İlkokul öğretmeninizin soyadı neydi?",
+                "En sevdiğiniz renk nedir?",
+                "Anne kızlık soyadı nedir?",
+                "İlk işyerinizin adı neydi?",
+                "En sevdiğiniz film karakteri kimdir?"
+            ]
+            
+            selected_question = st.selectbox("Güvenlik sorusu seçin:", security_questions)
+            security_answer = st.text_input("Güvenlik sorusu cevabı:", help="Bu cevabı şifrenizi unuttuğunuzda kullanacaksınız.")
+            
             st.markdown("")  # Boşluk için
             
             submit = st.form_submit_button("🚀 Kayıt Ol", type="primary", use_container_width=True)
@@ -977,9 +1005,11 @@ def show_register():
                     st.error("❌ Geçerli bir e-posta adresi girin!")
                 elif um.get_user_by_username(username):
                     st.error("❌ Bu kullanıcı adı zaten kullanılıyor!")
+                elif not security_answer.strip():
+                    st.error("❌ Güvenlik sorusu cevabı boş olamaz!")
                 else:
                     # Kullanıcıyı kaydet
-                    user = um.register_user(username, email, role, password)
+                    user = um.register_user(username, email, role, password, selected_question, security_answer)
                     if user:
                         st.success(f"✅ Kayıt başarılı! {username}")
                         st.info("⏳ **Hesabınız admin onayı bekliyor.** Admin onayladıktan sonra giriş yapabileceksiniz.")
@@ -1006,6 +1036,174 @@ def show_register():
             
             # Güvenlik bilgisi
             st.info("🔐 **Güvenlik Notu:** Tüm bilgileriniz güvenli olarak şifrelenerek saklanır.")
+
+def show_forgot_password():
+    """Şifremi unuttum sayfası"""
+    # Başlık - merkezi ve güzel görünüm
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    st.title("🔑 Şifremi Unuttum")
+    st.caption("Güvenlik sorunuzla şifrenizi sıfırlayın")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    um = get_user_manager()
+    
+    # Step tracking için session state kullan
+    if 'forgot_step' not in st.session_state:
+        st.session_state['forgot_step'] = 1
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        if st.session_state['forgot_step'] == 1:
+            # Adım 1: Kullanıcı adı gir
+            st.markdown("### 👤 Kullanıcı Adınızı Girin")
+            
+            with st.form("username_form"):
+                username = st.text_input(
+                    "👤 Kullanıcı Adı",
+                    placeholder="Kullanıcı adınızı girin",
+                    help="Kayıt olurken kullandığınız kullanıcı adı"
+                )
+                
+                st.markdown("")
+                
+                col_continue, col_back = st.columns([1, 1])
+                
+                with col_continue:
+                    continue_button = st.form_submit_button("Devam Et ➜", type="primary", use_container_width=True)
+                
+                with col_back:
+                    back_button = st.form_submit_button("↩️ Giriş Sayfası", use_container_width=True)
+                
+                if continue_button:
+                    if not username.strip():
+                        st.error("❌ Lütfen kullanıcı adınızı girin!")
+                    else:
+                        # Kullanıcıyı ve güvenlik sorusunu kontrol et
+                        security_question = um.get_security_question(username)
+                        if security_question:
+                            st.session_state['forgot_username'] = username
+                            st.session_state['forgot_security_question'] = security_question
+                            st.session_state['forgot_step'] = 2
+                            st.rerun()
+                        else:
+                            st.error("❌ Kullanıcı bulunamadı veya güvenlik sorusu tanımlanmamış!")
+                
+                if back_button:
+                    # Reset forgot state
+                    for key in ['forgot_step', 'forgot_username', 'forgot_security_question']:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                    st.session_state["page"] = "login"
+                    st.rerun()
+        
+        elif st.session_state['forgot_step'] == 2:
+            # Adım 2: Güvenlik sorusunu cevapla
+            username = st.session_state.get('forgot_username', '')
+            security_question = st.session_state.get('forgot_security_question', '')
+            
+            st.markdown("### 🔐 Güvenlik Sorusu")
+            st.write(f"**Kullanıcı:** {username}")
+            st.info(f"**Soru:** {security_question}")
+            
+            with st.form("security_form"):
+                security_answer = st.text_input(
+                    "🔑 Cevabınız",
+                    placeholder="Güvenlik sorusu cevabınızı girin",
+                    help="Kayıt olurken verdiğiniz cevabı girin"
+                )
+                
+                st.markdown("")
+                
+                col_verify, col_back = st.columns([1, 1])
+                
+                with col_verify:
+                    verify_button = st.form_submit_button("Doğrula ✓", type="primary", use_container_width=True)
+                
+                with col_back:
+                    back_button = st.form_submit_button("↩️ Geri", use_container_width=True)
+                
+                if verify_button:
+                    if not security_answer.strip():
+                        st.error("❌ Lütfen güvenlik sorusu cevabınızı girin!")
+                    else:
+                        if um.verify_security_answer(username, security_answer):
+                            st.session_state['forgot_step'] = 3
+                            st.rerun()
+                        else:
+                            st.error("❌ Güvenlik sorusu cevabı yanlış!")
+                
+                if back_button:
+                    st.session_state['forgot_step'] = 1
+                    st.rerun()
+        
+        elif st.session_state['forgot_step'] == 3:
+            # Adım 3: Yeni şifre belirle
+            username = st.session_state.get('forgot_username', '')
+            
+            st.markdown("### 🔒 Yeni Şifre Belirleyin")
+            st.success("✅ Güvenlik sorusu doğrulandı!")
+            st.write(f"**Kullanıcı:** {username}")
+            
+            with st.form("password_reset_form"):
+                new_password = st.text_input(
+                    "🔒 Yeni Şifre",
+                    type="password",
+                    placeholder="Yeni şifrenizi girin",
+                    help="En az 4 karakter olmalı"
+                )
+                
+                confirm_password = st.text_input(
+                    "🔒 Yeni Şifre Tekrar",
+                    type="password",
+                    placeholder="Yeni şifrenizi tekrar girin",
+                    help="Aynı şifreyi tekrar girin"
+                )
+                
+                st.markdown("")
+                
+                col_reset, col_cancel = st.columns([1, 1])
+                
+                with col_reset:
+                    reset_button = st.form_submit_button("🔄 Şifreyi Sıfırla", type="primary", use_container_width=True)
+                
+                with col_cancel:
+                    cancel_button = st.form_submit_button("❌ İptal", use_container_width=True)
+                
+                if reset_button:
+                    if not new_password or not confirm_password:
+                        st.error("❌ Lütfen tüm alanları doldurun!")
+                    elif len(new_password) < 4:
+                        st.error("❌ Şifre en az 4 karakter olmalı!")
+                    elif new_password != confirm_password:
+                        st.error("❌ Şifreler eşleşmiyor!")
+                    else:
+                        success, message = um.reset_password(username, new_password)
+                        if success:
+                            st.success("🎉 Şifreniz başarıyla sıfırlandı!")
+                            st.info("Artık yeni şifrenizle giriş yapabilirsiniz.")
+                            st.balloons()
+                            
+                            # Reset all forgot password states
+                            for key in ['forgot_step', 'forgot_username', 'forgot_security_question']:
+                                if key in st.session_state:
+                                    del st.session_state[key]
+                            
+                            # Kısa bir bekleme sonrası giriş sayfasına yönlendir
+                            import time
+                            time.sleep(2)
+                            st.session_state["page"] = "login"
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
+                
+                if cancel_button:
+                    # Reset forgot state
+                    for key in ['forgot_step', 'forgot_username', 'forgot_security_question']:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                    st.session_state["page"] = "login"
+                    st.rerun()
 
 def show_admin_approvals():
     """Admin kullanıcı onay sayfası"""
@@ -1259,6 +1457,8 @@ def main():
             show_login()
         elif st.session_state["page"] == "register":
             show_register()
+        elif st.session_state["page"] == "forgot_password":
+            show_forgot_password()
         else:
             st.session_state["page"] = "login"
             st.rerun()
